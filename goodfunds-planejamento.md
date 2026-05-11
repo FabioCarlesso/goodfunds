@@ -186,7 +186,7 @@ goodfunds/
 
 **Objetivo:** API rodando localmente com auth funcional e schema versionado.
 
-- [ ] Criar projeto Spring Boot 3 com Maven em `backend/`
+- [x] Criar projeto Spring Boot 3 com Maven em `backend/`
 - [ ] Definir estrutura de pacotes (`com.goodfunds`)
 - [ ] Configurar `application.yml` com perfis `dev`, `test` e `prod`
 - [ ] Configurar **Flyway** + `V1__init.sql` com as 5 tabelas
