@@ -1,10 +1,8 @@
-# Goodfunds - Contexto do Projeto
+# Goodfunds - Contexto do Backend
 
 ## Estado atual
 
 O repositorio contem o bootstrap inicial do backend em `backend/`, criado com Spring Boot 3.3.4, Java 17 e Maven Wrapper. A aplicacao principal esta em `com.goodfunds.GoodfundsApplication`.
-
-## Backend
 
 - Build: Maven, via `backend/mvnw`.
 - Java: 17 configurado no `pom.xml`.
