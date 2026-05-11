@@ -5,9 +5,7 @@ target/
 *.war
 *.ear
 hs_err_pid*
-.mvn/
-mvnw
-mvnw.cmd
+.mvn/wrapper/maven-wrapper.jar
 
 # IntelliJ
 .idea/
