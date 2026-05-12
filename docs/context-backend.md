@@ -13,6 +13,19 @@ O repositorio contem o bootstrap inicial do backend em `backend/`, criado com Sp
 - Actuator: expostos apenas `health` e `info`.
 - JPA: `open-in-view=false` e `ddl-auto=create-drop` apenas na configuracao base temporaria com H2.
 
+## Estrutura de pacotes
+
+Pacotes criados sob `com.goodfunds` (cada um com `package-info.java` documentando seu papel):
+
+- `controller`: REST controllers da API.
+- `service`: regras de negocio.
+- `repository`: interfaces Spring Data JPA.
+- `domain`: entidades JPA e enums de dominio.
+- `dto`: contratos de entrada/saida e validacoes Bean Validation.
+- `config`: configuracoes transversais (cache, OpenAPI, etc.).
+- `security`: Spring Security e autenticacao JWT.
+- `exception`: `GlobalExceptionHandler` (`ProblemDetail` / RFC 7807) e excecoes de dominio.
+
 ## Como executar
 
 ```bash
