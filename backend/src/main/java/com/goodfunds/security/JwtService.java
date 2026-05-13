@@ -16,6 +16,8 @@ import java.util.Date;
 @Service
 public class JwtService {
 
+    private static final int MIN_SECRET_BYTES = 32;
+
     private final SecretKey key;
     private final long expirationMillis;
 
@@ -66,10 +68,9 @@ public class JwtService {
         if (bytes == null) {
             bytes = secret.getBytes(StandardCharsets.UTF_8);
         }
-        if (bytes.length < 32) {
-            byte[] padded = new byte[32];
-            System.arraycopy(bytes, 0, padded, 0, bytes.length);
-            bytes = padded;
+        if (bytes.length < MIN_SECRET_BYTES) {
+            throw new IllegalArgumentException(
+                    "jwt.secret must contain at least 32 bytes for HS256 signing");
         }
         return Keys.hmacShaKeyFor(bytes);
     }

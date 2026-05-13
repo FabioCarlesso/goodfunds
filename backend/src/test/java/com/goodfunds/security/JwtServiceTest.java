@@ -3,6 +3,7 @@ package com.goodfunds.security;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JwtServiceTest {
 
@@ -45,5 +46,12 @@ class JwtServiceTest {
     void getExpirationMillis_returnsConfiguredValue() {
         JwtService service = new JwtService(SECRET, 86_400_000L);
         assertThat(service.getExpirationMillis()).isEqualTo(86_400_000L);
+    }
+
+    @Test
+    void constructor_rejectsShortSecret() {
+        assertThatThrownBy(() -> new JwtService("short-secret", 60_000L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("at least 32 bytes");
     }
 }

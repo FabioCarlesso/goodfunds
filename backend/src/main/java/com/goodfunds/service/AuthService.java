@@ -10,6 +10,7 @@ import com.goodfunds.exception.EmailAlreadyInUseException;
 import com.goodfunds.repository.CategoryRepository;
 import com.goodfunds.repository.UserRepository;
 import com.goodfunds.security.JwtService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -63,7 +64,11 @@ public class AuthService {
                 .email(email)
                 .senha(passwordEncoder.encode(request.senha()))
                 .build();
-        user = userRepository.save(user);
+        try {
+            user = userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException ex) {
+            throw new EmailAlreadyInUseException(email);
+        }
 
         seedDefaultCategories(user);
 
