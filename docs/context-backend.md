@@ -14,7 +14,9 @@ O repositorio contem o bootstrap inicial do backend em `backend/`, criado com Sp
 - PostgreSQL: perfis `dev` e `prod` usam PostgreSQL. Credenciais dev tem defaults locais; prod le de variaveis de ambiente.
 - Actuator: expostos apenas `health` e `info`.
 - JPA: `open-in-view=false` na base. `ddl-auto=none` em dev e test (Flyway gerencia o schema); `validate` em prod.
-- JWT: secret configurado via `jwt.secret`. Em dev usa valor padrao; em prod obrigatorio via `JWT_SECRET`.
+- JWT: secret configurado via `jwt.secret` e expiracao via `jwt.expiration` (default 24h). Em dev usa valor padrao; em prod obrigatorio via `JWT_SECRET`.
+- Autenticacao: `JwtService` (JJWT 0.12.6) emite tokens com expiracao de 24h; `JwtAuthenticationFilter` valida o header `Authorization: Bearer ...` e popula o `SecurityContext`. `SecurityConfig` deixa publicas as rotas `/auth/**`, `/actuator/health`, `/actuator/info` e Swagger; demais exigem token valido (sessao stateless). `CustomUserDetailsService` carrega usuario por email. Senhas com BCrypt.
+- Endpoints publicos `POST /auth/register` (201, cria usuario + 8 categorias padrao) e `POST /auth/login` (200, valida credenciais), ambos retornando `{ token, tokenType: "Bearer", expiresInMillis }`. Email e normalizado para lowercase.
 
 ## Estrutura de pacotes
 
@@ -68,7 +70,7 @@ cd backend
 ./mvnw verify
 ```
 
-A suite atual roda com profile `test` e cobre smoke test de contexto Spring, validacoes de schema/constraints via `MigrationSchemaTest` e mapeamentos JPA/repositories via `JpaMappingTest`.
+A suite atual roda com profile `test` e cobre smoke test de contexto Spring, validacoes de schema/constraints via `MigrationSchemaTest`, mapeamentos JPA/repositories via `JpaMappingTest`, geracao/validacao de tokens em `JwtServiceTest` e fluxo HTTP de autenticacao (register, login, erros e protecao de rotas) em `AuthControllerIntegrationTest`.
 
 ## Convencoes de schema
 
@@ -78,10 +80,10 @@ A suite atual roda com profile `test` e cobre smoke test de contexto Spring, val
 
 ## Decisoes temporarias
 
-- Spring Security esta no classpath para a issue de JWT, mas ainda nao ha configuracao de seguranca da aplicacao.
-- PDFBox, Springdoc e JJWT ja estao no classpath porque fazem parte das dependencias base do MVP e serao usados em issues futuras.
+- PDFBox e Springdoc ja estao no classpath porque fazem parte das dependencias base do MVP e serao usados em issues futuras.
+- JWT sem refresh token no MVP (decisao explicita em `goodfunds-planejamento.md`).
 
 ## Proximos passos
 
-- Adicionar services, controllers e configuracao de seguranca JWT sobre as entidades e repositorios existentes.
-- Expandir testes alem do smoke test conforme funcionalidades forem implementadas.
+- Adicionar services e controllers de Transactions, Categories, Invoices, Budgets e Reports sobre a infraestrutura de seguranca ja existente.
+- Expandir testes conforme funcionalidades forem implementadas.
