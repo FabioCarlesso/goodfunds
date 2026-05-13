@@ -44,10 +44,19 @@ cd backend
 
 ## Documentacao
 
-- `docs/context.md`: contexto geral do projeto.
-- `docs/context-backend.md`: contexto tecnico do backend.
+Documentacao tecnica principal (criada na issue #35):
+
+- `docs/doc.md`: visao geral do sistema, arquitetura, modulos e fluxos principais.
+- `docs/doc-backend.md`: documentacao tecnica do backend (entidades, endpoints, perfis, seguranca).
+- `docs/doc-frontend.md`: documentacao do frontend planejado (telas, navegacao, integracao com a API).
+- `docs/index.html`: documentacao visual do sistema — abrir direto no navegador.
+
+Documentos de contexto e planejamento:
+
+- `docs/context.md`: contexto geral do produto e do repositorio.
+- `docs/context-backend.md`: contexto operacional do backend.
 - `docs/context-frontend.md`: contexto planejado do frontend.
-- `docs/goodfunds-planejamento.md`: planejamento do MVP.
+- `docs/goodfunds-planejamento.md`: planejamento completo do MVP.
 
 ## Stack
 
