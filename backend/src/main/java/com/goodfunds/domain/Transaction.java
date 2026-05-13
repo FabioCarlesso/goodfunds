@@ -11,6 +11,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Positive;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -29,8 +31,8 @@ import java.util.UUID;
 @Table(name = "transactions")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
 @EqualsAndHashCode(of = "id")
 public class Transaction {
@@ -43,6 +45,7 @@ public class Transaction {
     @Column(name = "descricao", nullable = false, length = 500)
     private String descricao;
 
+    @Positive
     @Column(name = "valor", nullable = false, precision = 19, scale = 2)
     private BigDecimal valor;
 

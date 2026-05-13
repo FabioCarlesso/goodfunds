@@ -6,7 +6,7 @@ import jakarta.persistence.Converter;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 
-@Converter
+@Converter(autoApply = true)
 public class YearMonthAttributeConverter implements AttributeConverter<YearMonth, String> {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
