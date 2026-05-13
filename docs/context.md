@@ -49,14 +49,13 @@ Contexto e planejamento:
 - Smoke test do contexto Spring passando.
 - Perfis `dev`, `test` e `prod` configurados em `application.yml` (issue #3).
 - Perfil `dev`: PostgreSQL local (porta 5432). Perfil `test`: H2 in-memory. Perfil `prod`: variaveis de ambiente.
-- Flyway desabilitado em `dev` e `test` ate a criacao da primeira migration (issue #4).
+- Flyway habilitado em todos os perfis. Migration `V1__init.sql` cria as 5 tabelas: `users`, `categories`, `invoices`, `transactions`, `budgets` (issue #4).
 - Estrutura de pacotes `com.goodfunds` criada com `package-info.java` em cada pacote (issue #2).
 - Documentacao tecnica criada em `docs/` (issue #35).
 - Frontend e Docker Compose ainda nao foram criados.
 
 ## Proximos passos gerais
 
-- Criar migrations Flyway iniciais (issue #4).
 - Implementar entidades, repositories, services e controllers.
 - Configurar autenticacao JWT.
 - Criar frontend quando a sprint correspondente iniciar.
