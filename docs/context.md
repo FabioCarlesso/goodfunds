@@ -18,8 +18,17 @@ No estado atual, apenas o backend foi iniciado.
 
 ## Documentos principais
 
-- `docs/context.md`: contexto geral do produto e do repositorio.
-- `docs/context-backend.md`: contexto tecnico e operacional do backend.
+Documentacao tecnica (criada na issue #35):
+
+- `docs/doc.md`: visao geral do sistema, arquitetura, modulos, fluxos e regras de negocio.
+- `docs/doc-backend.md`: documentacao tecnica completa do backend.
+- `docs/doc-frontend.md`: documentacao do frontend planejado.
+- `docs/index.html`: documentacao visual — abrir no navegador.
+
+Contexto e planejamento:
+
+- `docs/context.md`: contexto geral do produto e do repositorio (este arquivo).
+- `docs/context-backend.md`: contexto operacional do backend.
 - `docs/context-frontend.md`: contexto planejado para o frontend.
 - `docs/goodfunds-planejamento.md`: planejamento completo do MVP.
 
@@ -38,14 +47,16 @@ No estado atual, apenas o backend foi iniciado.
 - Backend criado em `backend/`.
 - Maven Wrapper versionado e com checksum da distribuicao Maven.
 - Smoke test do contexto Spring passando.
-- `application.yml` base usa H2 temporario para permitir execucao local sem PostgreSQL.
-- Flyway ainda desabilitado ate a primeira migration.
-- Frontend, Docker Compose e profiles dedicados ainda nao foram criados.
+- Perfis `dev`, `test` e `prod` configurados em `application.yml` (issue #3).
+- Perfil `dev`: PostgreSQL local (porta 5432). Perfil `test`: H2 in-memory. Perfil `prod`: variaveis de ambiente.
+- Flyway desabilitado em `dev` e `test` ate a criacao da primeira migration (issue #4).
+- Estrutura de pacotes `com.goodfunds` criada com `package-info.java` em cada pacote (issue #2).
+- Documentacao tecnica criada em `docs/` (issue #35).
+- Frontend e Docker Compose ainda nao foram criados.
 
 ## Proximos passos gerais
 
-- Criar profiles `dev`, `test` e `prod` para o backend.
-- Criar migrations Flyway iniciais.
+- Criar migrations Flyway iniciais (issue #4).
 - Implementar entidades, repositories, services e controllers.
 - Configurar autenticacao JWT.
 - Criar frontend quando a sprint correspondente iniciar.
