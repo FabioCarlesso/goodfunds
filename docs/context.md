@@ -52,8 +52,8 @@ Contexto e planejamento:
 - Flyway habilitado em todos os perfis. Migration `V1__init.sql` cria as 5 tabelas: `users`, `categories`, `invoices`, `transactions`, `budgets` (issue #4).
 - Estrutura de pacotes `com.goodfunds` criada com `package-info.java` em cada pacote (issue #2).
 - Entidades JPA e repositories criados para `User`, `Category`, `Invoice`, `Transaction` e `Budget`.
-- Autenticacao JWT implementada: `POST /auth/register`, `POST /auth/login`, tokens Bearer de 24h, senhas com BCrypt, rotas publicas de auth/actuator/swagger e demais rotas protegidas.
-- Testes de backend cobrem schema/migrations, mapeamentos JPA, geracao/validacao de JWT e fluxos HTTP de autenticacao.
+- Autenticacao JWT implementada: `POST /auth/register` cria usuario e 8 categorias padrao, `POST /auth/login` valida credenciais, tokens Bearer de 24h, senhas com BCrypt, rotas publicas de auth/actuator/swagger e demais rotas protegidas.
+- Testes de backend cobrem schema/migrations, mapeamentos JPA, geracao/validacao de JWT, fluxos HTTP de autenticacao e testes unitarios do seed de categorias padrao em `AuthService`.
 - Documentacao tecnica criada em `docs/` (issue #35).
 - Frontend e Docker Compose ainda nao foram criados.
 
