@@ -69,6 +69,12 @@ cd backend
 
 O teste atual e um smoke test de contexto Spring com profile `test`.
 
+## Convencoes de schema
+
+- `updated_at` em `transactions` usa `DEFAULT NOW()` na criacao; atualizacoes automaticas dependem de `@UpdateTimestamp` na entidade JPA.
+- Timestamps armazenados como `TIMESTAMP WITH TIME ZONE` (UTC). Hibernate configurado com `hibernate.jdbc.time_zone=UTC`.
+- FKs de `user_id`: `ON DELETE CASCADE` (dado do usuario e removido junto). FKs de `category_id`: `ON DELETE RESTRICT`. FK de `invoice_id` em transactions: `ON DELETE SET NULL`.
+
 ## Decisoes temporarias
 
 - Spring Security esta no classpath para a issue de JWT, mas ainda nao ha configuracao de seguranca da aplicacao.
