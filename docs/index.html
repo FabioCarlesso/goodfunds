@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Goodfunds — Documentação Técnica</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --primary: #2563eb;
+      --primary-light: #dbeafe;
+      --success: #16a34a;
+      --success-light: #dcfce7;
+      --warning: #d97706;
+      --warning-light: #fef3c7;
+      --danger: #dc2626;
+      --danger-light: #fee2e2;
+      --accent: #7c3aed;
+      --accent-light: #ede9fe;
+      --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+      --font: 'Segoe UI', system-ui, sans-serif;
+      --mono: 'Consolas', 'Courier New', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    /* ── Layout ── */
+    .layout { display: flex; min-height: 100vh; }
+
+    nav {
+      width: 260px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    nav .logo {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    nav .logo h1 { font-size: 18px; color: var(--primary); font-weight: 700; }
+    nav .logo span { font-size: 12px; color: var(--text-muted); }
+
+    nav ul { list-style: none; }
+    nav ul li a {
+      display: block;
+      padding: 8px 20px;
+      text-decoration: none;
+      color: var(--text-muted);
+      font-size: 13.5px;
+      border-left: 3px solid transparent;
+      transition: all .15s;
+    }
+    nav ul li a:hover { color: var(--primary); background: var(--primary-light); border-left-color: var(--primary); }
+    nav ul .section-label {
+      padding: 12px 20px 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+    }
+
+    main {
+      flex: 1;
+      padding: 40px 48px;
+      max-width: 960px;
+    }
+
+    /* ── Sections ── */
+    section { margin-bottom: 56px; }
+    section:target { scroll-margin-top: 20px; }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 24px;
+    }
+
+    h3 { font-size: 16px; font-weight: 600; margin: 24px 0 12px; color: var(--text); }
+    h4 { font-size: 14px; font-weight: 600; margin: 16px 0 8px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+
+    p { margin-bottom: 12px; color: var(--text); }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .stat-card .label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .stat-card .value { font-size: 20px; font-weight: 700; color: var(--primary); }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; margin-bottom: 24px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    thead th {
+      background: var(--bg);
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--text-muted);
+      border-bottom: 2px solid var(--border);
+    }
+    tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: var(--bg); }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-blue { background: var(--primary-light); color: var(--primary); }
+    .badge-green { background: var(--success-light); color: var(--success); }
+    .badge-yellow { background: var(--warning-light); color: var(--warning); }
+    .badge-red { background: var(--danger-light); color: var(--danger); }
+    .badge-purple { background: var(--accent-light); color: var(--accent); }
+
+    /* ── Code ── */
+    pre, code {
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+    pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      overflow-x: auto;
+      margin-bottom: 20px;
+      line-height: 1.7;
+    }
+    code {
+      background: #f1f5f9;
+      color: #be185d;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    /* ── Diagrams ── */
+    .diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+
+    .arch-diagram {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: center;
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    .arch-layer {
+      width: 100%;
+      max-width: 620px;
+      border-radius: 6px;
+      padding: 14px 20px;
+      text-align: center;
+    }
+
+    .arch-layer .layer-title { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+    .arch-layer .layer-sub { font-size: 12px; opacity: .8; }
+    .arch-layer .layer-items { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .arch-layer .item {
+      background: rgba(255,255,255,.25);
+      border-radius: 4px;
+      padding: 2px 10px;
+      font-size: 12px;
+    }
+
+    .layer-frontend { background: #1d4ed8; color: white; }
+    .layer-backend  { background: #166534; color: white; }
+    .layer-db       { background: #7c2d12; color: white; }
+    .layer-infra    { background: #581c87; color: white; }
+
+    .arch-arrow {
+      font-size: 20px;
+      color: var(--text-muted);
+      line-height: 1;
+      text-align: center;
+      width: 100%;
+    }
+    .arch-arrow span { font-size: 11px; display: block; color: var(--text-muted); }
+
+    /* ── Flow diagram ── */
+    .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 20px; }
+    .flow-step {
+      background: var(--primary-light);
+      color: var(--primary);
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .flow-arrow { color: var(--text-muted); font-size: 18px; }
+    .flow-step.alt { background: var(--success-light); color: var(--success); border-color: #bbf7d0; }
+    .flow-step.warn { background: var(--warning-light); color: var(--warning); border-color: #fde68a; }
+
+    /* ── Package diagram ── */
+    .package-tree {
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.9;
+    }
+    .package-tree .pkg-root { color: #93c5fd; font-weight: 700; }
+    .package-tree .pkg-name { color: #6ee7b7; }
+    .package-tree .pkg-desc { color: #94a3b8; }
+
+    /* ── Sprint timeline ── */
+    .timeline { display: flex; flex-direction: column; gap: 0; margin-bottom: 24px; }
+    .timeline-item {
+      display: flex;
+      gap: 16px;
+      padding-bottom: 24px;
+      position: relative;
+    }
+    .timeline-item:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 19px;
+      top: 40px;
+      bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+    .timeline-dot {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+      z-index: 1;
+    }
+    .dot-done { background: var(--success-light); color: var(--success); border: 2px solid var(--success); }
+    .dot-active { background: var(--primary-light); color: var(--primary); border: 2px solid var(--primary); }
+    .dot-pending { background: var(--bg); color: var(--text-muted); border: 2px solid var(--border); }
+    .timeline-content { flex: 1; }
+    .timeline-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; margin-top: 8px; }
+    .timeline-content p { font-size: 13.5px; color: var(--text-muted); margin: 0; }
+
+    /* ── Entity diagram ── */
+    .entity-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .entity-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .entity-header {
+      padding: 10px 14px;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: .03em;
+    }
+    .entity-header.user { background: #dbeafe; color: #1d4ed8; }
+    .entity-header.category { background: #dcfce7; color: #166534; }
+    .entity-header.transaction { background: #fef3c7; color: #92400e; }
+    .entity-header.invoice { background: #ede9fe; color: #5b21b6; }
+    .entity-header.budget { background: #fee2e2; color: #991b1b; }
+    .entity-body { padding: 10px 14px; }
+    .entity-field { display: flex; justify-content: space-between; font-size: 12.5px; padding: 3px 0; border-bottom: 1px solid var(--border); }
+    .entity-field:last-child { border-bottom: none; }
+    .field-name { color: var(--text); font-weight: 500; }
+    .field-type { color: var(--text-muted); font-family: var(--mono); font-size: 11.5px; }
+
+    /* ── Endpoint list ── */
+    .endpoint { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 6px; margin-bottom: 6px; font-size: 13.5px; }
+    .endpoint:hover { background: var(--bg); }
+    .method { font-family: var(--mono); font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 4px; min-width: 52px; text-align: center; }
+    .method-get { background: #dcfce7; color: #166534; }
+    .method-post { background: #dbeafe; color: #1d4ed8; }
+    .method-put { background: #fef3c7; color: #92400e; }
+    .method-delete { background: #fee2e2; color: #991b1b; }
+    .endpoint-path { font-family: var(--mono); color: var(--text); }
+    .endpoint-desc { color: var(--text-muted); font-size: 13px; }
+
+    /* ── Profile table ── */
+    .profile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
+    .profile-card h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+    .profile-card.dev h4 { color: var(--primary); }
+    .profile-card.test h4 { color: var(--success); }
+    .profile-card.prod h4 { color: var(--danger); }
+    .profile-item { display: flex; flex-direction: column; margin-bottom: 8px; font-size: 13px; }
+    .profile-item .pi-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+    .profile-item .pi-value { font-family: var(--mono); color: var(--text); font-size: 12.5px; }
+
+    /* ── Alerts ── */
+    .alert { border-radius: var(--radius); padding: 14px 18px; margin-bottom: 16px; font-size: 14px; border-left: 4px solid; }
+    .alert-info { background: var(--primary-light); border-color: var(--primary); color: #1e40af; }
+    .alert-warn { background: var(--warning-light); border-color: var(--warning); color: #92400e; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      nav { display: none; }
+      main { padding: 24px 20px; }
+      .profile-grid { grid-template-columns: 1fr; }
+      .entity-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <nav>
+    <div class="logo">
+      <h1>Goodfunds</h1>
+      <span>Documentação Técnica</span>
+    </div>
+    <ul>
+      <li class="section-label">Visão Geral</li>
+      <li><a href="#overview">Sobre o sistema</a></li>
+      <li><a href="#architecture">Arquitetura</a></li>
+      <li><a href="#stack">Stack</a></li>
+      <li><a href="#roadmap">Roadmap MVP</a></li>
+
+      <li class="section-label">Backend</li>
+      <li><a href="#packages">Estrutura de pacotes</a></li>
+      <li><a href="#entities">Entidades</a></li>
+      <li><a href="#endpoints">Endpoints</a></li>
+      <li><a href="#profiles">Perfis Spring</a></li>
+      <li><a href="#security">Segurança</a></li>
+      <li><a href="#flows">Fluxos principais</a></li>
+
+      <li class="section-label">Frontend</li>
+      <li><a href="#frontend">Visão do frontend</a></li>
+      <li><a href="#screens">Telas</a></li>
+      <li><a href="#navigation">Navegação</a></li>
+
+      <li class="section-label">Referência</li>
+      <li><a href="#run">Como executar</a></li>
+      <li><a href="#decisions">Decisões técnicas</a></li>
+    </ul>
+  </nav>
+
+  <!-- ── Main content ── -->
+  <main>
+
+    <!-- OVERVIEW -->
+    <section id="overview">
+      <h2>Sobre o sistema</h2>
+      <p>
+        O <strong>Goodfunds</strong> é um sistema de controle financeiro pessoal desenvolvido para uso próprio.
+        Cobre avaliação de faturas, planejamento financeiro, estimativas, dashboards e gestão de transações e categorias.
+      </p>
+
+      <div class="card-grid">
+        <div class="stat-card">
+          <div class="label">Linguagem</div>
+          <div class="value" style="font-size:16px;">Java 17</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Framework</div>
+          <div class="value" style="font-size:16px;">Spring Boot 3</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Banco (prod)</div>
+          <div class="value" style="font-size:16px;">PostgreSQL</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Frontend</div>
+          <div class="value" style="font-size:16px;">React + Vite</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">Objetivos do MVP</h3>
+        <ul style="padding-left:20px; line-height:2;">
+          <li>Registrar e categorizar receitas e despesas manualmente.</li>
+          <li>Importar faturas de cartão (PDF Nubank) e processar transações automaticamente.</li>
+          <li>Planejar gastos mensais com orçamentos por categoria.</li>
+          <li>Visualizar relatórios, evolução e estimativas financeiras.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ARCHITECTURE -->
+    <section id="architecture">
+      <h2>Arquitetura</h2>
+
+      <div class="diagram">
+        <div class="arch-diagram">
+
+          <div class="arch-layer layer-frontend">
+            <div class="layer-title">FRONTEND</div>
+            <div class="layer-sub">Vite · React · TypeScript · Tailwind CSS</div>
+            <div class="layer-items">
+              <span class="item">Dashboard</span>
+              <span class="item">Faturas</span>
+              <span class="item">Planejamento</span>
+              <span class="item">Relatórios</span>
+              <span class="item">Config</span>
+            </div>
+          </div>
+
+          <div class="arch-arrow">
+            ↕
+            <span>REST / JSON · Authorization: Bearer &lt;JWT&gt;</span>
+          </div>
+
+          <div class="arch-layer layer-backend">
+            <div class="layer-title">BACKEND</div>
+            <div class="layer-sub">Java 17 · Spring Boot 3.3.4 · Maven</div>
+            <div class="layer-items">
+              <span class="item">Auth API (JWT)</span>
+              <span class="item">Fatura API (PDF)</span>
+              <span class="item">Finance API</span>
+              <span class="item">Report API</span>
+              <span class="item">Swagger UI</span>
+            </div>
+          </div>
+
+          <div class="arch-arrow">
+            ↕
+            <span>JPA / Hibernate · Flyway migrations</span>
+          </div>
+
+          <div class="arch-layer layer-db">
+            <div class="layer-title">BANCO DE DADOS</div>
+            <div class="layer-sub">PostgreSQL (prod / dev) · H2 in-memory (testes)</div>
+            <div class="layer-items">
+              <span class="item">users</span>
+              <span class="item">categories</span>
+              <span class="item">transactions</span>
+              <span class="item">invoices</span>
+              <span class="item">budgets</span>
+            </div>
+          </div>
+
+          <div class="arch-arrow">
+            ↕
+            <span>Docker Compose (planejado)</span>
+          </div>
+
+          <div class="arch-layer layer-infra">
+            <div class="layer-title">INFRA &amp; TOOLING</div>
+            <div class="layer-sub">Docker · Git · JUnit 5 · Caffeine Cache · Actuator</div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- STACK -->
+    <section id="stack">
+      <h2>Stack</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Camada</th><th>Tecnologia</th><th>Versão</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Linguagem</td><td>Java</td><td>17</td></tr>
+            <tr><td>Framework</td><td>Spring Boot</td><td>3.3.4</td></tr>
+            <tr><td>Build</td><td>Maven (Maven Wrapper)</td><td>—</td></tr>
+            <tr><td>Segurança</td><td>Spring Security + JJWT</td><td>0.12.6</td></tr>
+            <tr><td>Persistência</td><td>JPA / Hibernate</td><td>—</td></tr>
+            <tr><td>Migrations</td><td>Flyway</td><td>—</td></tr>
+            <tr><td>Banco (dev/prod)</td><td>PostgreSQL</td><td>—</td></tr>
+            <tr><td>Banco (testes)</td><td>H2 in-memory</td><td>—</td></tr>
+            <tr><td>API Docs</td><td>Springdoc OpenAPI 3</td><td>2.6.0</td></tr>
+            <tr><td>Cache</td><td>Caffeine</td><td>—</td></tr>
+            <tr><td>Observabilidade</td><td>Spring Boot Actuator</td><td>—</td></tr>
+            <tr><td>Validação</td><td>Bean Validation (jakarta)</td><td>—</td></tr>
+            <tr><td>Parser PDF</td><td>Apache PDFBox</td><td>3.0.3</td></tr>
+            <tr><td>Testes</td><td>JUnit 5 + Spring Security Test</td><td>—</td></tr>
+            <tr><td>Frontend</td><td>Vite + React + TypeScript + Tailwind</td><td>—</td></tr>
+            <tr><td>Containerização</td><td>Docker Compose</td><td>planejado</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ROADMAP -->
+    <section id="roadmap">
+      <h2>Roadmap MVP</h2>
+      <div class="timeline">
+
+        <div class="timeline-item">
+          <div class="timeline-dot dot-active">1</div>
+          <div class="timeline-content">
+            <h4>Sprint 1 — Fundação <span class="badge badge-blue" style="font-weight:400; margin-left:8px;">Semanas 1–2 · Em andamento</span></h4>
+            <p>Auth com JWT, schema Flyway, entidades JPA, perfis Spring, Actuator, GlobalExceptionHandler.</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot dot-pending">2</div>
+          <div class="timeline-content">
+            <h4>Sprint 2 — Core financeiro <span class="badge badge-yellow" style="font-weight:400; margin-left:8px;">Semanas 3–4 · Pendente</span></h4>
+            <p>CRUD de transações e categorias, upload e parse de faturas Nubank, categorização automática.</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot dot-pending">3</div>
+          <div class="timeline-content">
+            <h4>Sprint 3 — Planejamento e relatórios <span class="badge badge-yellow" style="font-weight:400; margin-left:8px;">Semanas 5–6 · Pendente</span></h4>
+            <p>CRUD de orçamentos, engine de estimativas, API de relatórios, Caffeine Cache.</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot dot-pending">4</div>
+          <div class="timeline-content">
+            <h4>Sprint 4 — Finalização MVP <span class="badge badge-yellow" style="font-weight:400; margin-left:8px;">Semanas 7–8 · Pendente</span></h4>
+            <p>Frontend React, Docker Compose completo, testes JUnit, Swagger UI, revisão de segurança.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- PACKAGES -->
+    <section id="packages">
+      <h2>Estrutura de pacotes</h2>
+      <div class="package-tree">
+<span class="pkg-root">com.goodfunds</span>
+├── <span class="pkg-name">GoodfundsApplication</span>     <span class="pkg-desc"># Ponto de entrada Spring Boot</span>
+├── <span class="pkg-name">controller/</span>              <span class="pkg-desc"># REST controllers da API</span>
+├── <span class="pkg-name">service/</span>                 <span class="pkg-desc"># Regras de negócio</span>
+├── <span class="pkg-name">repository/</span>              <span class="pkg-desc"># Interfaces Spring Data JPA</span>
+├── <span class="pkg-name">domain/</span>                  <span class="pkg-desc"># Entidades JPA e enums de domínio</span>
+├── <span class="pkg-name">dto/</span>                     <span class="pkg-desc"># Contratos de entrada/saída (Bean Validation)</span>
+├── <span class="pkg-name">config/</span>                  <span class="pkg-desc"># Configurações transversais (cache, OpenAPI)</span>
+├── <span class="pkg-name">security/</span>                <span class="pkg-desc"># Spring Security e filtro JWT</span>
+└── <span class="pkg-name">exception/</span>               <span class="pkg-desc"># GlobalExceptionHandler + exceções de domínio</span>
+      </div>
+    </section>
+
+    <!-- ENTITIES -->
+    <section id="entities">
+      <h2>Entidades do domínio</h2>
+
+      <div class="entity-grid">
+
+        <div class="entity-card">
+          <div class="entity-header user">User</div>
+          <div class="entity-body">
+            <div class="entity-field"><span class="field-name">id</span><span class="field-type">UUID · PK</span></div>
+            <div class="entity-field"><span class="field-name">nome</span><span class="field-type">String</span></div>
+            <div class="entity-field"><span class="field-name">email</span><span class="field-type">String · unique</span></div>
+            <div class="entity-field"><span class="field-name">senha</span><span class="field-type">String · BCrypt</span></div>
+            <div class="entity-field"><span class="field-name">role</span><span class="field-type">Enum · ROLE_USER</span></div>
+            <div class="entity-field"><span class="field-name">enabled</span><span class="field-type">boolean</span></div>
+            <div class="entity-field"><span class="field-name">createdAt</span><span class="field-type">LocalDateTime</span></div>
+          </div>
+        </div>
+
+        <div class="entity-card">
+          <div class="entity-header category">Category</div>
+          <div class="entity-body">
+            <div class="entity-field"><span class="field-name">id</span><span class="field-type">UUID · PK</span></div>
+            <div class="entity-field"><span class="field-name">nome</span><span class="field-type">String</span></div>
+            <div class="entity-field"><span class="field-name">tipo</span><span class="field-type">RECEITA | DESPESA</span></div>
+            <div class="entity-field"><span class="field-name">user</span><span class="field-type">User · FK</span></div>
+          </div>
+        </div>
+
+        <div class="entity-card">
+          <div class="entity-header transaction">Transaction</div>
+          <div class="entity-body">
+            <div class="entity-field"><span class="field-name">id</span><span class="field-type">UUID · PK</span></div>
+            <div class="entity-field"><span class="field-name">descricao</span><span class="field-type">String</span></div>
+            <div class="entity-field"><span class="field-name">valor</span><span class="field-type">BigDecimal</span></div>
+            <div class="entity-field"><span class="field-name">data</span><span class="field-type">LocalDate</span></div>
+            <div class="entity-field"><span class="field-name">formaPagamento</span><span class="field-type">Enum</span></div>
+            <div class="entity-field"><span class="field-name">category</span><span class="field-type">Category · FK</span></div>
+            <div class="entity-field"><span class="field-name">invoice</span><span class="field-type">Invoice · FK · nullable</span></div>
+            <div class="entity-field"><span class="field-name">user</span><span class="field-type">User · FK</span></div>
+          </div>
+        </div>
+
+        <div class="entity-card">
+          <div class="entity-header invoice">Invoice</div>
+          <div class="entity-body">
+            <div class="entity-field"><span class="field-name">id</span><span class="field-type">UUID · PK</span></div>
+            <div class="entity-field"><span class="field-name">arquivo</span><span class="field-type">String · path</span></div>
+            <div class="entity-field"><span class="field-name">origem</span><span class="field-type">NUBANK | ITAU | OUTROS</span></div>
+            <div class="entity-field"><span class="field-name">status</span><span class="field-type">PENDENTE_PARSE | PROCESSADA | ERRO</span></div>
+            <div class="entity-field"><span class="field-name">mesReferencia</span><span class="field-type">YearMonth</span></div>
+            <div class="entity-field"><span class="field-name">totalValor</span><span class="field-type">BigDecimal</span></div>
+            <div class="entity-field"><span class="field-name">user</span><span class="field-type">User · FK</span></div>
+          </div>
+        </div>
+
+        <div class="entity-card">
+          <div class="entity-header budget">Budget</div>
+          <div class="entity-body">
+            <div class="entity-field"><span class="field-name">id</span><span class="field-type">UUID · PK</span></div>
+            <div class="entity-field"><span class="field-name">limite</span><span class="field-type">BigDecimal</span></div>
+            <div class="entity-field"><span class="field-name">category</span><span class="field-type">Category · FK</span></div>
+            <div class="entity-field"><span class="field-name">mes</span><span class="field-type">Integer · 1–12</span></div>
+            <div class="entity-field"><span class="field-name">ano</span><span class="field-type">Integer</span></div>
+            <div class="entity-field"><span class="field-name">user</span><span class="field-type">User · FK</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="alert alert-info">
+        <strong>Constraint:</strong> Budget possui <code>UNIQUE(user_id, category_id, mes, ano)</code> — um orçamento por categoria por mês por usuário.
+      </div>
+    </section>
+
+    <!-- ENDPOINTS -->
+    <section id="endpoints">
+      <h2>Endpoints da API</h2>
+
+      <h3>Auth <span class="badge badge-green">Público</span></h3>
+      <div class="endpoint"><span class="method method-post">POST</span><span class="endpoint-path">/auth/register</span><span class="endpoint-desc">Cadastro + seed de categorias padrão</span></div>
+      <div class="endpoint"><span class="method method-post">POST</span><span class="endpoint-path">/auth/login</span><span class="endpoint-desc">Login e geração de JWT (24h)</span></div>
+
+      <h3>Transactions <span class="badge badge-blue">JWT</span></h3>
+      <div class="endpoint"><span class="method method-get">GET</span><span class="endpoint-path">/transactions</span><span class="endpoint-desc">Lista paginada com filtros (?ref, categoryId, tipo, from, to)</span></div>
+      <div class="endpoint"><span class="method method-post">POST</span><span class="endpoint-path">/transactions</span><span class="endpoint-desc">Cria transação manual</span></div>
+      <div class="endpoint"><span class="method method-put">PUT</span><span class="endpoint-path">/transactions/{id}</span><span class="endpoint-desc">Atualiza transação</span></div>
+      <div class="endpoint"><span class="method method-delete">DELETE</span><span class="endpoint-path">/transactions/{id}</span><span class="endpoint-desc">Remove transação</span></div>
+
+      <h3>Categories <span class="badge badge-blue">JWT</span></h3>
+      <div class="endpoint"><span class="method method-get">GET</span><span class="endpoint-path">/categories</span><span class="endpoint-desc">Lista categorias do usuário</span></div>
+      <div class="endpoint"><span class="method method-post">POST</span><span class="endpoint-path">/categories</span><span class="endpoint-desc">Cria categoria</span></div>
+      <div class="endpoint"><span class="method method-put">PUT</span><span class="endpoint-path">/categories/{id}</span><span class="endpoint-desc">Atualiza categoria</span></div>
+      <div class="endpoint"><span class="method method-delete">DELETE</span><span class="endpoint-path">/categories/{id}</span><span class="endpoint-desc">Remove categoria</span></div>
+
+      <h3>Invoices <span class="badge badge-blue">JWT</span></h3>
+      <div class="endpoint"><span class="method method-post">POST</span><span class="endpoint-path">/invoices/upload</span><span class="endpoint-desc">Upload de fatura PDF (multipart/form-data)</span></div>
+      <div class="endpoint"><span class="method method-get">GET</span><span class="endpoint-path">/invoices</span><span class="endpoint-desc">Lista faturas do usuário</span></div>
+      <div class="endpoint"><span class="method method-get">GET</span><span class="endpoint-path">/invoices/{id}</span><span class="endpoint-desc">Detalhe da fatura + transações geradas</span></div>
+
+      <h3>Budgets <span class="badge badge-blue">JWT</span></h3>
+      <div class="endpoint"><span class="method method-get">GET</span><span class="endpoint-path">/budgets</span><span class="endpoint-desc">Lista orçamentos do mês (?ref=YYYY-MM)</span></div>
+      <div class="endpoint"><span class="method method-post">POST</span><span class="endpoint-path">/budgets</span><span class="endpoint-desc">Cria orçamento mensal</span></div>
+      <div class="endpoint"><span class="method method-put">PUT</span><span class="endpoint-path">/budgets/{id}</span><span class="endpoint-desc">Atualiza orçamento</span></div>
+
+      <h3>Reports <span class="badge badge-blue">JWT</span> <span class="badge badge-purple">Cache</span></h3>
+      <div class="endpoint"><span class="method method-get">GET</span><span class="endpoint-path">/reports/summary</span><span class="endpoint-desc">Resumo mensal: receitas, despesas, orçado, saldo (?ref=YYYY-MM)</span></div>
+      <div class="endpoint"><span class="method method-get">GET</span><span class="endpoint-path">/reports/by-category</span><span class="endpoint-desc">Gastos agrupados por categoria (?ref=YYYY-MM)</span></div>
+      <div class="endpoint"><span class="method method-get">GET</span><span class="endpoint-path">/reports/evolution</span><span class="endpoint-desc">Evolução mensal (?from=YYYY-MM&amp;to=YYYY-MM)</span></div>
+      <div class="endpoint"><span class="method method-get">GET</span><span class="endpoint-path">/reports/estimate</span><span class="endpoint-desc">Projeção do mês atual (média 3 meses)</span></div>
+
+      <h3>Actuator <span class="badge badge-green">Público</span></h3>
+      <div class="endpoint"><span class="method method-get">GET</span><span class="endpoint-path">/actuator/health</span><span class="endpoint-desc">Health check</span></div>
+      <div class="endpoint"><span class="method method-get">GET</span><span class="endpoint-path">/actuator/info</span><span class="endpoint-desc">Informações do build</span></div>
+    </section>
+
+    <!-- PROFILES -->
+    <section id="profiles">
+      <h2>Perfis Spring</h2>
+      <div class="profile-grid">
+
+        <div class="profile-card dev">
+          <h4>dev <span class="badge badge-blue">padrão</span></h4>
+          <div class="profile-item"><span class="pi-label">Banco</span><span class="pi-value">PostgreSQL localhost:5432</span></div>
+          <div class="profile-item"><span class="pi-label">ddl-auto</span><span class="pi-value">create-drop</span></div>
+          <div class="profile-item"><span class="pi-label">Flyway</span><span class="pi-value">desabilitado</span></div>
+          <div class="profile-item"><span class="pi-label">Uso</span><span class="pi-value">Desenvolvimento local</span></div>
+        </div>
+
+        <div class="profile-card test">
+          <h4>test</h4>
+          <div class="profile-item"><span class="pi-label">Banco</span><span class="pi-value">H2 in-memory</span></div>
+          <div class="profile-item"><span class="pi-label">ddl-auto</span><span class="pi-value">create-drop</span></div>
+          <div class="profile-item"><span class="pi-label">Flyway</span><span class="pi-value">desabilitado</span></div>
+          <div class="profile-item"><span class="pi-label">Uso</span><span class="pi-value">./mvnw verify</span></div>
+        </div>
+
+        <div class="profile-card prod">
+          <h4>prod</h4>
+          <div class="profile-item"><span class="pi-label">Banco</span><span class="pi-value">PostgreSQL (env vars)</span></div>
+          <div class="profile-item"><span class="pi-label">ddl-auto</span><span class="pi-value">validate</span></div>
+          <div class="profile-item"><span class="pi-label">Flyway</span><span class="pi-value">habilitado</span></div>
+          <div class="profile-item"><span class="pi-label">Uso</span><span class="pi-value">Produção</span></div>
+        </div>
+
+      </div>
+
+      <h3>Variáveis de ambiente (prod)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Variável</th><th>Descrição</th></tr></thead>
+          <tbody>
+            <tr><td><code>SPRING_DATASOURCE_URL</code></td><td>URL JDBC do PostgreSQL</td></tr>
+            <tr><td><code>SPRING_DATASOURCE_USERNAME</code></td><td>Usuário do banco</td></tr>
+            <tr><td><code>SPRING_DATASOURCE_PASSWORD</code></td><td>Senha do banco</td></tr>
+            <tr><td><code>JWT_SECRET</code></td><td>Segredo para assinar tokens JWT</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECURITY -->
+    <section id="security">
+      <h2>Segurança</h2>
+
+      <div class="card">
+        <h3 style="margin-top:0">Modelo de autenticação</h3>
+        <ul style="padding-left:20px; line-height:2.2;">
+          <li>JWT (JSON Web Token) com expiração de <strong>24 horas</strong>.</li>
+          <li>Senhas armazenadas com <strong>BCrypt</strong>.</li>
+          <li>Filtro <code>JwtAuthFilter</code> valida o token antes de qualquer controller.</li>
+          <li>Todas as rotas exigem JWT, exceto <code>/auth/**</code>, <code>/actuator/health</code>, <code>/actuator/info</code> e <code>/swagger-ui/**</code>.</li>
+          <li>Cada usuário acessa somente seus próprios dados (verificação no service via <code>SecurityContext</code>).</li>
+        </ul>
+      </div>
+
+      <h3>Tratamento de erros (RFC 7807)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Situação</th><th>HTTP</th><th>Formato</th></tr></thead>
+          <tbody>
+            <tr><td>Validação inválida (@Valid)</td><td><span class="badge badge-yellow">400</span></td><td>ProblemDetail com campos</td></tr>
+            <tr><td>Token ausente ou inválido</td><td><span class="badge badge-red">401</span></td><td>ProblemDetail</td></tr>
+            <tr><td>Recurso não encontrado</td><td><span class="badge badge-yellow">404</span></td><td>ProblemDetail</td></tr>
+            <tr><td>Regra de negócio violada</td><td><span class="badge badge-yellow">422</span></td><td>ProblemDetail</td></tr>
+            <tr><td>Erro inesperado</td><td><span class="badge badge-red">500</span></td><td>ProblemDetail</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- FLOWS -->
+    <section id="flows">
+      <h2>Fluxos principais</h2>
+
+      <h3>Registro de usuário</h3>
+      <div class="flow">
+        <div class="flow-step">POST /auth/register</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">Valida payload</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">Cria User (BCrypt)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step alt">Seed 8 categorias padrão</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step alt">Retorna JWT</div>
+      </div>
+
+      <h3>Login</h3>
+      <div class="flow">
+        <div class="flow-step">POST /auth/login</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">Valida credenciais</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step alt">Gera JWT (24h)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step alt">Retorna token</div>
+      </div>
+
+      <h3>Lançamento manual de transação</h3>
+      <div class="flow">
+        <div class="flow-step">POST /transactions</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">JWT válido</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">Valida payload</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step alt">Salva Transaction</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step warn">Invalida cache /reports/*</div>
+      </div>
+
+      <h3>Importação de fatura PDF</h3>
+      <div class="flow">
+        <div class="flow-step">POST /invoices/upload</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">JWT válido</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">Salva PDF em ./uploads/{userId}/</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">NubankInvoiceParser (PDFBox)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step alt">Gera Transactions</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step alt">Invoice.status = PROCESSADA</div>
+      </div>
+
+      <h3>Consulta de relatório</h3>
+      <div class="flow">
+        <div class="flow-step">GET /reports/summary</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">JWT válido</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step alt">Cache hit? → retorna</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">Cache miss → consulta DB</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step alt">Armazena em cache</div>
+      </div>
+    </section>
+
+    <!-- FRONTEND -->
+    <section id="frontend">
+      <h2>Frontend — Visão geral</h2>
+
+      <div class="alert alert-warn">
+        <strong>Status:</strong> Frontend ainda não implementado. Será desenvolvido na Sprint 4 após os endpoints do backend estarem prontos.
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">Stack planejada</h3>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; padding-top:4px;">
+          <span class="badge badge-blue" style="font-size:13px; padding:4px 12px;">Vite</span>
+          <span class="badge badge-blue" style="font-size:13px; padding:4px 12px;">React</span>
+          <span class="badge badge-blue" style="font-size:13px; padding:4px 12px;">TypeScript</span>
+          <span class="badge badge-blue" style="font-size:13px; padding:4px 12px;">Tailwind CSS</span>
+          <span class="badge badge-purple" style="font-size:13px; padding:4px 12px;">React Router</span>
+          <span class="badge badge-purple" style="font-size:13px; padding:4px 12px;">React Query (candidato)</span>
+          <span class="badge badge-green" style="font-size:13px; padding:4px 12px;">Vitest (testes)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREENS -->
+    <section id="screens">
+      <h2>Telas planejadas</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Rota</th><th>Tela</th><th>Endpoints consumidos</th></tr></thead>
+          <tbody>
+            <tr><td><code>/login</code></td><td>Login</td><td>POST /auth/login</td></tr>
+            <tr><td><code>/register</code></td><td>Cadastro</td><td>POST /auth/register</td></tr>
+            <tr><td><code>/</code></td><td>Dashboard</td><td>GET /reports/summary, /reports/by-category</td></tr>
+            <tr><td><code>/transactions</code></td><td>Transações</td><td>GET/POST/PUT/DELETE /transactions, GET /categories</td></tr>
+            <tr><td><code>/invoices</code></td><td>Faturas</td><td>GET /invoices, POST /invoices/upload</td></tr>
+            <tr><td><code>/invoices/:id</code></td><td>Detalhe da fatura</td><td>GET /invoices/{id}</td></tr>
+            <tr><td><code>/planning</code></td><td>Planejamento</td><td>GET/POST/PUT /budgets</td></tr>
+            <tr><td><code>/reports</code></td><td>Relatórios</td><td>GET /reports/evolution, /reports/estimate</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- NAVIGATION -->
+    <section id="navigation">
+      <h2>Fluxo de navegação</h2>
+      <div class="diagram" style="font-family: var(--mono); font-size: 13px; line-height: 2;">
+        <pre style="background:transparent; color: var(--text); padding:0; margin:0; font-size:13px; overflow-x:auto;">
+/login ──(autenticado)──► / (Dashboard)
+                                │
+      ┌─────────────────────────┼──────────────────────┐
+      ▼                         ▼                      ▼
+/transactions              /invoices              /planning
+                                │
+                                ▼
+                          /invoices/:id
+                                │
+      ┌─────────────────────────┘
+      ▼
+  /reports
+
+Rota sem autenticação → redireciona para /login
+        </pre>
+      </div>
+    </section>
+
+    <!-- HOW TO RUN -->
+    <section id="run">
+      <h2>Como executar</h2>
+
+      <h3>Pré-requisitos</h3>
+      <ul style="padding-left:20px; line-height:2.2; margin-bottom:16px;">
+        <li>Java 17+</li>
+        <li>PostgreSQL rodando em <code>localhost:5432</code> com database <code>goodfunds</code> (perfil dev)</li>
+        <li>Bash ou terminal compatível com Maven Wrapper</li>
+      </ul>
+
+      <h3>Iniciar o backend</h3>
+      <pre>cd backend
+./mvnw spring-boot:run</pre>
+      <p>A aplicação sobe em <code>http://localhost:8080</code> com o perfil <code>dev</code>.</p>
+
+      <h3>Rodar os testes</h3>
+      <pre>cd backend
+./mvnw verify</pre>
+      <p>Utiliza H2 in-memory com o perfil <code>test</code>. Não requer PostgreSQL.</p>
+
+      <h3>Health check</h3>
+      <pre>curl http://localhost:8080/actuator/health</pre>
+
+      <h3>Swagger UI</h3>
+      <pre>http://localhost:8080/swagger-ui.html</pre>
+    </section>
+
+    <!-- DECISIONS -->
+    <section id="decisions">
+      <h2>Decisões técnicas</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Decisão</th><th>Motivo</th></tr></thead>
+          <tbody>
+            <tr><td><code>open-in-view=false</code></td><td>Evita lazy loading fora da transação e problemas de performance</td></tr>
+            <tr><td><code>ddl-auto=create-drop</code> em dev/test</td><td>Simplifica desenvolvimento antes das migrations Flyway</td></tr>
+            <tr><td><code>ddl-auto=validate</code> em prod</td><td>Flyway é a única fonte verdade do schema em produção</td></tr>
+            <tr><td>PDFs no filesystem</td><td>Evita inflar o banco com blobs binários</td></tr>
+            <tr><td>ProblemDetail (RFC 7807)</td><td>Formato padronizado e interoperável de erros HTTP</td></tr>
+            <tr><td>Caffeine em /reports/*</td><td>Relatórios são leitura intensiva; cache reduz carga no banco</td></tr>
+            <tr><td>JWT sem refresh token</td><td>Simplificação intencional para o MVP</td></tr>
+            <tr><td>Interface InvoiceParser</td><td>Arquitetura preparada para parsers de outros bancos além do Nubank</td></tr>
+            <tr><td>Paginação em todos os endpoints de listagem</td><td>Evita retornos ilimitados conforme os dados crescem</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer style="border-top: 1px solid var(--border); padding-top: 24px; color: var(--text-muted); font-size: 13px; margin-top: 24px;">
+      Goodfunds · Documentação técnica · Gerada em maio/2026
+    </footer>
+
+  </main>
+</div>
+</body>
+</html>
