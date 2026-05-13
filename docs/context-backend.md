@@ -9,10 +9,10 @@ O repositorio contem o bootstrap inicial do backend em `backend/`, criado com Sp
 - Spring Boot: 3.3.4.
 - Perfis configurados: `dev` (PostgreSQL local), `test` (H2 in-memory) e `prod` (variaveis de ambiente).
 - Perfil padrao: `dev`.
-- Flyway: dependencia incluida, habilitado apenas em `prod`. Sera habilitado nos demais perfis na issue #4 (primeira migration).
+- Flyway: habilitado em todos os perfis. Migration `V1__init.sql` cria as 5 tabelas: `users`, `categories`, `invoices`, `transactions`, `budgets`.
 - PostgreSQL: perfis `dev` e `prod` usam PostgreSQL. Credenciais dev tem defaults locais; prod le de variaveis de ambiente.
 - Actuator: expostos apenas `health` e `info`.
-- JPA: `open-in-view=false` na base. `ddl-auto=create-drop` em dev e test; `validate` em prod.
+- JPA: `open-in-view=false` na base. `ddl-auto=none` em dev e test (Flyway gerencia o schema); `validate` em prod.
 - JWT: secret configurado via `jwt.secret`. Em dev usa valor padrao; em prod obrigatorio via `JWT_SECRET`.
 
 ## Estrutura de pacotes
@@ -32,8 +32,8 @@ Pacotes criados sob `com.goodfunds` (cada um com `package-info.java` documentand
 
 | Perfil | Banco | ddl-auto | Flyway | Uso |
 |--------|-------|----------|--------|-----|
-| `dev` (padrao) | PostgreSQL local (porta 5432) | `create-drop` | desabilitado | Desenvolvimento local |
-| `test` | H2 in-memory | `create-drop` | desabilitado | Testes automatizados (`./mvnw verify`) |
+| `dev` (padrao) | PostgreSQL local (porta 5432) | `none` | habilitado | Desenvolvimento local |
+| `test` | H2 in-memory (MODE=PostgreSQL) | `none` | habilitado | Testes automatizados (`./mvnw verify`) |
 | `prod` | PostgreSQL via env vars | `validate` | habilitado | Producao |
 
 Variaveis de ambiente do perfil `prod`:
@@ -69,15 +69,18 @@ cd backend
 
 O teste atual e um smoke test de contexto Spring com profile `test`.
 
+## Convencoes de schema
+
+- `updated_at` em `transactions` usa `DEFAULT NOW()` na criacao; atualizacoes automaticas dependem de `@UpdateTimestamp` na entidade JPA.
+- Timestamps armazenados como `TIMESTAMP WITH TIME ZONE` (UTC). Hibernate configurado com `hibernate.jdbc.time_zone=UTC`.
+- FKs de `user_id`: `ON DELETE CASCADE` (dado do usuario e removido junto). FKs de `category_id`: `ON DELETE RESTRICT`. FK de `invoice_id` em transactions: `ON DELETE SET NULL`.
+
 ## Decisoes temporarias
 
-- Flyway permanece desabilitado em `dev` e `test` ate a criacao do `V1__init.sql` (issue #4).
-- `ddl-auto=create-drop` em `dev` e `test` enquanto nao ha migrations. Sera substituido por `none` apos Flyway ativado.
 - Spring Security esta no classpath para a issue de JWT, mas ainda nao ha configuracao de seguranca da aplicacao.
 - PDFBox, Springdoc e JJWT ja estao no classpath porque fazem parte das dependencias base do MVP e serao usados em issues futuras.
 
 ## Proximos passos
 
-- Habilitar Flyway e criar `V1__init.sql` (issue #4).
 - Adicionar entidades JPA, repositories, services, controllers e configuracao de seguranca JWT.
 - Expandir testes alem do smoke test conforme funcionalidades forem implementadas.
