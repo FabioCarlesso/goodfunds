@@ -9,7 +9,8 @@ O repositorio contem o bootstrap inicial do backend em `backend/`, criado com Sp
 - Spring Boot: 3.3.4.
 - Perfis configurados: `dev` (PostgreSQL local), `test` (H2 in-memory) e `prod` (variaveis de ambiente).
 - Perfil padrao: `dev`.
-- Flyway: habilitado em todos os perfis. Migration `V1__init.sql` cria as 5 tabelas: `users`, `categories`, `invoices`, `transactions`, `budgets`.
+- Flyway: habilitado em todos os perfis. Migration `V1__init.sql` cria as 5 tabelas: `users`, `categories`, `invoices`, `transactions`, `budgets`; `V2__add_audit_columns.sql` adiciona colunas de auditoria em `budgets` e `invoices`.
+- Entidades JPA: `User`, `Category`, `Invoice`, `Transaction` e `Budget` mapeadas em `com.goodfunds.domain`, com enums (`Role`, `TipoCategoria`, `FormaPagamento`, `OrigemFatura`, `StatusFatura`) e repositorios Spring Data JPA em `com.goodfunds.repository`. UUIDs gerados via `GenerationType.UUID`; timestamps com `@CreationTimestamp`/`@UpdateTimestamp`; `mesReferencia` mapeado para `YearMonth` via `AttributeConverter`.
 - PostgreSQL: perfis `dev` e `prod` usam PostgreSQL. Credenciais dev tem defaults locais; prod le de variaveis de ambiente.
 - Actuator: expostos apenas `health` e `info`.
 - JPA: `open-in-view=false` na base. `ddl-auto=none` em dev e test (Flyway gerencia o schema); `validate` em prod.
@@ -67,11 +68,11 @@ cd backend
 ./mvnw verify
 ```
 
-O teste atual e um smoke test de contexto Spring com profile `test`.
+A suite atual roda com profile `test` e cobre smoke test de contexto Spring, validacoes de schema/constraints via `MigrationSchemaTest` e mapeamentos JPA/repositories via `JpaMappingTest`.
 
 ## Convencoes de schema
 
-- `updated_at` em `transactions` usa `DEFAULT NOW()` na criacao; atualizacoes automaticas dependem de `@UpdateTimestamp` na entidade JPA.
+- `updated_at` em `transactions`, `invoices` e `budgets` usa `DEFAULT NOW()` na criacao; atualizacoes automaticas dependem de `@UpdateTimestamp` nas entidades JPA.
 - Timestamps armazenados como `TIMESTAMP WITH TIME ZONE` (UTC). Hibernate configurado com `hibernate.jdbc.time_zone=UTC`.
 - FKs de `user_id`: `ON DELETE CASCADE` (dado do usuario e removido junto). FKs de `category_id`: `ON DELETE RESTRICT`. FK de `invoice_id` em transactions: `ON DELETE SET NULL`.
 
@@ -82,5 +83,5 @@ O teste atual e um smoke test de contexto Spring com profile `test`.
 
 ## Proximos passos
 
-- Adicionar entidades JPA, repositories, services, controllers e configuracao de seguranca JWT.
+- Adicionar services, controllers e configuracao de seguranca JWT sobre as entidades e repositorios existentes.
 - Expandir testes alem do smoke test conforme funcionalidades forem implementadas.
