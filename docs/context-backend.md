@@ -10,6 +10,7 @@ O repositorio contem o bootstrap inicial do backend em `backend/`, criado com Sp
 - Perfis configurados: `dev` (PostgreSQL local), `test` (H2 in-memory) e `prod` (variaveis de ambiente).
 - Perfil padrao: `dev`.
 - Flyway: habilitado em todos os perfis. Migration `V1__init.sql` cria as 5 tabelas: `users`, `categories`, `invoices`, `transactions`, `budgets`.
+- Entidades JPA: `User`, `Category`, `Invoice`, `Transaction` e `Budget` mapeadas em `com.goodfunds.domain`, com enums (`Role`, `TipoCategoria`, `FormaPagamento`, `OrigemFatura`, `StatusFatura`) e repositorios Spring Data JPA em `com.goodfunds.repository`. UUIDs gerados via `GenerationType.UUID`; timestamps com `@CreationTimestamp`/`@UpdateTimestamp`; `mesReferencia` mapeado para `YearMonth` via `AttributeConverter`.
 - PostgreSQL: perfis `dev` e `prod` usam PostgreSQL. Credenciais dev tem defaults locais; prod le de variaveis de ambiente.
 - Actuator: expostos apenas `health` e `info`.
 - JPA: `open-in-view=false` na base. `ddl-auto=none` em dev e test (Flyway gerencia o schema); `validate` em prod.
@@ -82,5 +83,5 @@ O teste atual e um smoke test de contexto Spring com profile `test`.
 
 ## Proximos passos
 
-- Adicionar entidades JPA, repositories, services, controllers e configuracao de seguranca JWT.
+- Adicionar services, controllers e configuracao de seguranca JWT sobre as entidades e repositorios existentes.
 - Expandir testes alem do smoke test conforme funcionalidades forem implementadas.
