@@ -18,6 +18,9 @@ management:
     web:
       exposure:
         include: health,info
+  endpoint:
+    health:
+      show-details: never # explicit: default is 'never'; kept to prevent accidental exposure on Spring Boot upgrades
 
 jwt:
   secret: ${JWT_SECRET:dev-secret-please-change-in-production}
