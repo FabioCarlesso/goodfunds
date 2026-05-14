@@ -719,16 +719,16 @@
         <div class="profile-card dev">
           <h4>dev <span class="badge badge-blue">padrão</span></h4>
           <div class="profile-item"><span class="pi-label">Banco</span><span class="pi-value">PostgreSQL localhost:5432</span></div>
-          <div class="profile-item"><span class="pi-label">ddl-auto</span><span class="pi-value">create-drop</span></div>
-          <div class="profile-item"><span class="pi-label">Flyway</span><span class="pi-value">desabilitado</span></div>
+          <div class="profile-item"><span class="pi-label">ddl-auto</span><span class="pi-value">none</span></div>
+          <div class="profile-item"><span class="pi-label">Flyway</span><span class="pi-value">habilitado</span></div>
           <div class="profile-item"><span class="pi-label">Uso</span><span class="pi-value">Desenvolvimento local</span></div>
         </div>
 
         <div class="profile-card test">
           <h4>test</h4>
           <div class="profile-item"><span class="pi-label">Banco</span><span class="pi-value">H2 in-memory</span></div>
-          <div class="profile-item"><span class="pi-label">ddl-auto</span><span class="pi-value">create-drop</span></div>
-          <div class="profile-item"><span class="pi-label">Flyway</span><span class="pi-value">desabilitado</span></div>
+          <div class="profile-item"><span class="pi-label">ddl-auto</span><span class="pi-value">none</span></div>
+          <div class="profile-item"><span class="pi-label">Flyway</span><span class="pi-value">habilitado</span></div>
           <div class="profile-item"><span class="pi-label">Uso</span><span class="pi-value">./mvnw verify</span></div>
         </div>
 
@@ -957,7 +957,7 @@ Rota sem autenticação → redireciona para /login
           <thead><tr><th>Decisão</th><th>Motivo</th></tr></thead>
           <tbody>
             <tr><td><code>open-in-view=false</code></td><td>Evita lazy loading fora da transação e problemas de performance</td></tr>
-            <tr><td><code>ddl-auto=create-drop</code> em dev/test</td><td>Simplifica desenvolvimento antes das migrations Flyway</td></tr>
+            <tr><td><code>ddl-auto=none</code> em dev/test</td><td>Flyway gerencia o schema também em desenvolvimento e testes</td></tr>
             <tr><td><code>ddl-auto=validate</code> em prod</td><td>Flyway é a única fonte verdade do schema em produção</td></tr>
             <tr><td>PDFs no filesystem</td><td>Evita inflar o banco com blobs binários</td></tr>
             <tr><td>ProblemDetail (RFC 7807)</td><td>Formato padronizado e interoperável de erros HTTP</td></tr>

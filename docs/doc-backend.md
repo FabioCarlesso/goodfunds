@@ -201,8 +201,8 @@ Filtros disponíveis em `GET /transactions`: `?ref=YYYY-MM`, `categoryId`, `tipo
 
 | Perfil | Banco | ddl-auto | Flyway | Uso |
 |---|---|---|---|---|
-| `dev` (padrão) | PostgreSQL localhost:5432 | `create-drop` | desabilitado | Desenvolvimento local |
-| `test` | H2 in-memory | `create-drop` | desabilitado | Testes automatizados |
+| `dev` (padrão) | PostgreSQL localhost:5432 | `none` | habilitado | Desenvolvimento local |
+| `test` | H2 in-memory (MODE=PostgreSQL) | `none` | habilitado | Testes automatizados |
 | `prod` | PostgreSQL via env vars | `validate` | habilitado | Produção |
 
 ### Variáveis de ambiente do perfil `prod`
@@ -325,7 +325,7 @@ Os testes usam o perfil `test` com H2 in-memory (não requerem PostgreSQL).
 | Decisão | Motivo |
 |---|---|
 | `open-in-view=false` | Evita lazy loading fora da transação e problemas de performance |
-| `ddl-auto=create-drop` em dev/test | Simplifica desenvolvimento antes das migrations Flyway |
+| `ddl-auto=none` em dev/test | Flyway gerencia o schema também em desenvolvimento e testes |
 | `ddl-auto=validate` em prod | Flyway é a única fonte verdade do schema em produção |
 | PDFs no filesystem | Evita inflar o banco com blobs binários |
 | `ProblemDetail` (RFC 7807) | Formato padronizado e interoperável de erros HTTP |
