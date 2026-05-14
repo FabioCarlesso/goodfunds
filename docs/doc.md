@@ -186,6 +186,6 @@ goodfunds/
 - Backend inicializado com Spring Boot 3.3.4 em `backend/`.
 - Estrutura de pacotes `com.goodfunds` criada com `package-info.java` em cada pacote.
 - Perfis Spring configurados: `dev` (PostgreSQL local), `test` (H2), `prod` (variáveis de ambiente).
-- Flyway incluído no classpath; habilitado apenas em `prod` até a criação da primeira migration.
+- Flyway habilitado nos perfis `dev`, `test` e `prod`; migrations versionadas criam e evoluem o schema.
 - Smoke test de contexto Spring passando no perfil `test`.
-- Frontend, Docker Compose e migrations ainda não implementados.
+- Frontend e Docker Compose ainda não implementados.

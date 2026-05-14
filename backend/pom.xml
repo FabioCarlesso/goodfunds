@@ -75,7 +75,7 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- H2 para testes (e default antes do dev profile com Postgres ser configurado em #10) -->
+        <!-- H2 para testes -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
