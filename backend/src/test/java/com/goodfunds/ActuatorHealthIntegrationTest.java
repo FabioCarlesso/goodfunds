@@ -29,8 +29,14 @@ class ActuatorHealthIntegrationTest {
     @Test
     void healthEndpoint_doesNotExposeComponentDetailsPublicly() throws Exception {
         mockMvc.perform(get("/actuator/health"))
-                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.components").doesNotExist())
+                .andExpect(jsonPath("$.details").doesNotExist());
+    }
+
+    @Test
+    void healthDbSubEndpoint_doesNotExposeDetails() throws Exception {
+        mockMvc.perform(get("/actuator/health/db"))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.details").doesNotExist());
     }
 }
