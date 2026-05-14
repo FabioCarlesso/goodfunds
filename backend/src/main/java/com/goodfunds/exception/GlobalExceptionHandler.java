@@ -1,6 +1,8 @@
 package com.goodfunds.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -28,6 +30,8 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
                                                                   HttpHeaders headers,
@@ -43,7 +47,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "Erro de validacao",
                 "Requisicao invalida",
                 "validation-error",
-                request);
+                instanceUri(request));
         problem.setProperty("errors", errors);
         return handleExceptionInternal(ex, problem, headers, HttpStatus.BAD_REQUEST, request);
     }
@@ -58,7 +62,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "Corpo da requisicao invalido",
                 "O corpo da requisicao esta ausente ou possui JSON invalido",
                 "invalid-request-body",
-                request);
+                instanceUri(request));
         return handleExceptionInternal(ex, problem, headers, HttpStatus.BAD_REQUEST, request);
     }
 
@@ -72,7 +76,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "Metodo nao suportado",
                 "Metodo HTTP nao suportado para este recurso",
                 "method-not-allowed",
-                request);
+                instanceUri(request));
         return handleExceptionInternal(ex, problem, headers, HttpStatus.METHOD_NOT_ALLOWED, request);
     }
 
@@ -86,7 +90,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "Tipo de conteudo nao suportado",
                 "Content-Type nao suportado para este recurso",
                 "unsupported-media-type",
-                request);
+                instanceUri(request));
         return handleExceptionInternal(ex, problem, headers, HttpStatus.UNSUPPORTED_MEDIA_TYPE, request);
     }
 
@@ -98,9 +102,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = createProblem(
                 HttpStatus.NOT_FOUND,
                 "Recurso nao encontrado",
-                "Recurso nao encontrado",
+                "O recurso solicitado nao existe neste servidor",
                 "resource-not-found",
-                request);
+                instanceUri(request));
         return handleExceptionInternal(ex, problem, headers, HttpStatus.NOT_FOUND, request);
     }
 
@@ -111,7 +115,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "E-mail ja cadastrado",
                 ex.getMessage(),
                 "email-already-in-use",
-                request);
+                instanceUri(request));
     }
 
     @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class})
@@ -121,7 +125,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "Falha de autenticacao",
                 "Credenciais invalidas",
                 "authentication-failed",
-                request);
+                instanceUri(request));
     }
 
     @ExceptionHandler(DisabledException.class)
@@ -129,44 +133,38 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return createProblem(
                 HttpStatus.FORBIDDEN,
                 "Usuario desabilitado",
-                "Usuario desabilitado",
+                "Sua conta esta desabilitada",
                 "user-disabled",
-                request);
+                instanceUri(request));
     }
 
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnexpected(Exception ex, HttpServletRequest request) {
+        log.error("Unexpected error on {} {}", request.getMethod(), request.getRequestURI(), ex);
         return createProblem(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Erro interno",
                 "Ocorreu um erro inesperado",
                 "internal-server-error",
-                request);
+                instanceUri(request));
     }
 
-    private ProblemDetail createProblem(HttpStatus status,
-                                        String title,
-                                        String detail,
-                                        String type,
-                                        WebRequest request) {
+    private ProblemDetail createProblem(HttpStatus status, String title, String detail, String type, URI instance) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
         problem.setTitle(title);
         problem.setType(URI.create("urn:goodfunds:problem:" + type));
+        problem.setInstance(instance);
+        return problem;
+    }
+
+    private URI instanceUri(HttpServletRequest request) {
+        return URI.create(request.getRequestURI());
+    }
+
+    private URI instanceUri(WebRequest request) {
         if (request instanceof ServletWebRequest servletWebRequest) {
-            problem.setInstance(URI.create(servletWebRequest.getRequest().getRequestURI()));
+            return URI.create(servletWebRequest.getRequest().getRequestURI());
         }
-        return problem;
-    }
-
-    private ProblemDetail createProblem(HttpStatus status,
-                                        String title,
-                                        String detail,
-                                        String type,
-                                        HttpServletRequest request) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
-        problem.setTitle(title);
-        problem.setType(URI.create("urn:goodfunds:problem:" + type));
-        problem.setInstance(URI.create(request.getRequestURI()));
-        return problem;
+        return null;
     }
 }

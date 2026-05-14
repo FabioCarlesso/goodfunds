@@ -2,6 +2,7 @@ package com.goodfunds.auth;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.goodfunds.domain.User;
 import com.goodfunds.repository.CategoryRepository;
 import com.goodfunds.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -30,6 +32,7 @@ class AuthControllerIntegrationTest {
     @Autowired private ObjectMapper objectMapper;
     @Autowired private UserRepository userRepository;
     @Autowired private CategoryRepository categoryRepository;
+    @Autowired private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void cleanup() {
@@ -250,6 +253,34 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:unauthenticated"));
+    }
+
+    @Test
+    void login_withDisabledUser_returns403() throws Exception {
+        User disabledUser = User.builder()
+                .nome("Disabled")
+                .email("disabled@example.com")
+                .senha(passwordEncoder.encode("senha12345"))
+                .enabled(false)
+                .build();
+        userRepository.save(disabledUser);
+
+        String payload = """
+                {
+                  "email": "disabled@example.com",
+                  "senha": "senha12345"
+                }
+                """;
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:user-disabled"))
+                .andExpect(jsonPath("$.title").value("Usuario desabilitado"))
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.instance").value("/auth/login"));
     }
 
     @Test

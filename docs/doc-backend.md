@@ -235,6 +235,7 @@ Filtros disponíveis em `GET /transactions`: `?ref=YYYY-MM`, `categoryId`, `tipo
 - Falhas de autenticação retornam HTTP 401 em `application/problem+json`, inclusive quando bloqueadas pelo Spring Security antes de chegar ao controller.
 - Recursos não encontrados retornam HTTP 404.
 - E-mail já cadastrado retorna HTTP 409.
+- Erros de regra de negócio específicos usam o status HTTP semântico correspondente (ex: 409 para e-mail duplicado); HTTP 422 não é utilizado.
 - Erros inesperados retornam HTTP 500.
 
 ---
