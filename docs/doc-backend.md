@@ -221,7 +221,7 @@ Filtros disponíveis em `GET /transactions`: `?ref=YYYY-MM`, `categoryId`, `tipo
 - **Autenticação:** JWT com expiração de 24 horas via JJWT 0.12.6.
 - **Filtro:** `JwtAuthFilter` intercepta todas as requisições e valida o token antes de liberar acesso ao contexto Spring Security.
 - **Senhas:** hash BCrypt.
-- **Autorização:** todos os endpoints (exceto `/auth/**`, `/actuator/health`, `/actuator/info`, `/swagger-ui/**`, `/v3/api-docs/**`) exigem token JWT válido.
+- **Autorização:** todos os endpoints (exceto `/auth/**`, `/actuator/health/**`, `/actuator/info`, `/swagger-ui/**`, `/v3/api-docs/**`) exigem token JWT válido.
 - **Isolamento:** cada usuário acessa apenas seus próprios dados; verificação feita na camada de serviço usando o usuário autenticado do `SecurityContext`.
 
 ---
@@ -230,8 +230,11 @@ Filtros disponíveis em `GET /transactions`: `?ref=YYYY-MM`, `categoryId`, `tipo
 
 - `GlobalExceptionHandler` (`@RestControllerAdvice`) captura exceções e retorna `ProblemDetail` conforme RFC 7807.
 - Erros de validação (`@Valid`) retornam HTTP 400 com detalhes dos campos inválidos.
+- JSON inválido ou corpo ausente retorna HTTP 400 em `application/problem+json`.
+- Métodos HTTP e `Content-Type` não suportados retornam HTTP 405/415 em `application/problem+json`.
+- Falhas de autenticação retornam HTTP 401 em `application/problem+json`, inclusive quando bloqueadas pelo Spring Security antes de chegar ao controller.
 - Recursos não encontrados retornam HTTP 404.
-- Erros de negócio retornam HTTP 422 (Unprocessable Entity).
+- E-mail já cadastrado retorna HTTP 409.
 - Erros inesperados retornam HTTP 500.
 
 ---
