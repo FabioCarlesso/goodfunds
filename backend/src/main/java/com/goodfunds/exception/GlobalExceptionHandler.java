@@ -3,6 +3,7 @@ package com.goodfunds.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -16,10 +17,12 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -108,6 +111,46 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problem, headers, HttpStatus.NOT_FOUND, request);
     }
 
+    @Override
+    protected ResponseEntity<Object> handleTypeMismatch(TypeMismatchException ex,
+                                                        HttpHeaders headers,
+                                                        HttpStatusCode status,
+                                                        WebRequest request) {
+        String parameter = (ex instanceof MethodArgumentTypeMismatchException matme)
+                ? matme.getName()
+                : ex.getPropertyName();
+        String requiredType = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "valor valido";
+
+        ProblemDetail problem = createProblem(
+                HttpStatus.BAD_REQUEST,
+                "Erro de validacao",
+                "Requisicao invalida",
+                "validation-error",
+                instanceUri(request));
+        Map<String, String> errors = new LinkedHashMap<>();
+        errors.put(parameter != null ? parameter : "parametro",
+                "valor invalido, esperado tipo " + requiredType);
+        problem.setProperty("errors", errors);
+        return handleExceptionInternal(ex, problem, headers, HttpStatus.BAD_REQUEST, request);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleMissingServletRequestParameter(MissingServletRequestParameterException ex,
+                                                                          HttpHeaders headers,
+                                                                          HttpStatusCode status,
+                                                                          WebRequest request) {
+        ProblemDetail problem = createProblem(
+                HttpStatus.BAD_REQUEST,
+                "Erro de validacao",
+                "Requisicao invalida",
+                "validation-error",
+                instanceUri(request));
+        Map<String, String> errors = new LinkedHashMap<>();
+        errors.put(ex.getParameterName(), "parametro obrigatorio ausente");
+        problem.setProperty("errors", errors);
+        return handleExceptionInternal(ex, problem, headers, HttpStatus.BAD_REQUEST, request);
+    }
+
     @ExceptionHandler(EmailAlreadyInUseException.class)
     public ProblemDetail handleEmailInUse(EmailAlreadyInUseException ex, HttpServletRequest request) {
         return createProblem(
@@ -115,6 +158,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "E-mail ja cadastrado",
                 ex.getMessage(),
                 "email-already-in-use",
+                instanceUri(request));
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ProblemDetail handleResourceNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
+        return createProblem(
+                HttpStatus.NOT_FOUND,
+                ex.getTitle(),
+                ex.getMessage(),
+                ex.getType(),
+                instanceUri(request));
+    }
+
+    @ExceptionHandler(InvalidTransactionFilterException.class)
+    public ProblemDetail handleInvalidFilter(InvalidTransactionFilterException ex, HttpServletRequest request) {
+        return createProblem(
+                HttpStatus.BAD_REQUEST,
+                "Filtro invalido",
+                ex.getMessage(),
+                "invalid-filter",
                 instanceUri(request));
     }
 
