@@ -17,7 +17,8 @@ O repositorio contem o bootstrap inicial do backend em `backend/`, criado com Sp
 - JWT: secret configurado via `jwt.secret` e expiracao via `jwt.expiration` (default 24h). Em dev usa valor padrao; em prod obrigatorio via `JWT_SECRET`.
 - Autenticacao: `JwtService` (JJWT 0.12.6) emite tokens com expiracao de 24h; `JwtAuthenticationFilter` valida o header `Authorization: Bearer ...` e popula o `SecurityContext`. `SecurityConfig` deixa publicas as rotas `/auth/**`, `/actuator/health/**`, `/actuator/info` e Swagger; demais exigem token valido (sessao stateless). `CustomUserDetailsService` carrega usuario por email. Senhas com BCrypt.
 - Endpoints publicos `POST /auth/register` (201, cria usuario + 8 categorias padrao) e `POST /auth/login` (200, valida credenciais), ambos retornando `{ token, tokenType: "Bearer", expiresInMillis }`. Email e normalizado para lowercase.
-- Erros HTTP da API usam `ProblemDetail` (`application/problem+json`) via `GlobalExceptionHandler`, incluindo validacao, JSON invalido, metodo/media type nao suportados, recursos inexistentes, falha de autenticacao e e-mail duplicado. Requisicoes bloqueadas pelo Spring Security tambem retornam `ProblemDetail`.
+- Endpoints autenticados de `Transaction` (issue #12): `GET /transactions` (Page com filtros opcionais `ref=YYYY-MM`, `categoryId`, `tipo`, `from`, `to`, `page`, `size`, `sort`; default `data,desc`, size 20), `POST /transactions` (201 com header `Location`), `PUT /transactions/{id}` (200), `DELETE /transactions/{id}` (204). Todos escopados pelo usuario do JWT; categoria precisa pertencer ao usuario (caso contrario 404 `category-not-found`); transacao inexistente ou de outro usuario retorna 404 `transaction-not-found`. Validacoes: `descricao` obrigatoria (max 500), `valor > 0`, `data`, `formaPagamento` e `categoryId` obrigatorios. Campo `invoiceId` so e populado quando a transacao foi gerada pelo parser de fatura — endpoints manuais nao o alteram.
+- Erros HTTP da API usam `ProblemDetail` (`application/problem+json`) via `GlobalExceptionHandler`, incluindo validacao, JSON invalido, metodo/media type nao suportados, recursos inexistentes (`resource-not-found` para rotas, `transaction-not-found`/`category-not-found` para entidades), falha de autenticacao e e-mail duplicado. Requisicoes bloqueadas pelo Spring Security tambem retornam `ProblemDetail`.
 
 ## Estrutura de pacotes
 
@@ -71,7 +72,7 @@ cd backend
 ./mvnw verify
 ```
 
-A suite atual roda com profile `test` e cobre smoke test de contexto Spring, validacoes de schema/constraints via `MigrationSchemaTest`, mapeamentos JPA/repositories via `JpaMappingTest`, geracao/validacao de tokens em `JwtServiceTest` e fluxo HTTP de autenticacao (register, login, erros e protecao de rotas) em `AuthControllerIntegrationTest`.
+A suite atual roda com profile `test` e cobre smoke test de contexto Spring, validacoes de schema/constraints via `MigrationSchemaTest`, mapeamentos JPA/repositories via `JpaMappingTest`, geracao/validacao de tokens em `JwtServiceTest`, fluxo HTTP de autenticacao (register, login, erros e protecao de rotas) em `AuthControllerIntegrationTest`, testes unitarios do CRUD de transacoes em `TransactionServiceTest` (mockando os repositorios) e integracao HTTP completa (paginacao, filtros, validacoes e isolamento por usuario) em `TransactionControllerIntegrationTest`.
 
 ## Convencoes de schema
 
@@ -86,5 +87,5 @@ A suite atual roda com profile `test` e cobre smoke test de contexto Spring, val
 
 ## Proximos passos
 
-- Adicionar services e controllers de Transactions, Categories, Invoices, Budgets e Reports sobre a infraestrutura de seguranca ja existente.
+- Adicionar services e controllers de Categories, Invoices, Budgets e Reports sobre a infraestrutura de seguranca ja existente (CRUD de Transactions ja implementado na issue #12).
 - Expandir testes conforme funcionalidades forem implementadas.

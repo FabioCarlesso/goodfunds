@@ -53,12 +53,13 @@ Contexto e planejamento:
 - Estrutura de pacotes `com.goodfunds` criada com `package-info.java` em cada pacote (issue #2).
 - Entidades JPA e repositories criados para `User`, `Category`, `Invoice`, `Transaction` e `Budget`.
 - Autenticacao JWT implementada: `POST /auth/register` cria usuario e 8 categorias padrao, `POST /auth/login` valida credenciais, tokens Bearer de 24h, senhas com BCrypt, rotas publicas de auth/actuator/swagger e demais rotas protegidas.
-- Testes de backend cobrem schema/migrations, mapeamentos JPA, geracao/validacao de JWT, fluxos HTTP de autenticacao e testes unitarios do seed de categorias padrao em `AuthService`.
+- CRUD de `Transaction` implementado (issue #12): `GET /transactions` paginado com filtros (`ref`, `categoryId`, `tipo`, `from`, `to`, `page`, `size`, `sort`), `POST/PUT/DELETE /transactions[/{id}]`; todas as rotas escopadas pelo usuario do JWT e com validacao de propriedade da categoria.
+- Testes de backend cobrem schema/migrations, mapeamentos JPA, geracao/validacao de JWT, fluxos HTTP de autenticacao, testes unitarios do seed de categorias padrao em `AuthService`, testes unitarios do `TransactionService` e integracao HTTP completa do CRUD de Transactions.
 - Documentacao tecnica criada em `docs/` (issue #35).
 - Frontend e Docker Compose ainda nao foram criados.
 
 ## Proximos passos gerais
 
-- Implementar services e controllers de Transactions, Categories, Invoices, Budgets e Reports sobre a autenticacao existente.
+- Implementar services e controllers de Categories, Invoices, Budgets e Reports sobre a autenticacao existente (Transactions ja foi implementado na issue #12).
 - Criar frontend quando a sprint correspondente iniciar.
 - Adicionar Docker Compose para execucao end-to-end.

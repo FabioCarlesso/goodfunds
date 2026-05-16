@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.goodfunds.domain.User;
 import com.goodfunds.repository.CategoryRepository;
+import com.goodfunds.repository.TransactionRepository;
 import com.goodfunds.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,10 +33,12 @@ class AuthControllerIntegrationTest {
     @Autowired private ObjectMapper objectMapper;
     @Autowired private UserRepository userRepository;
     @Autowired private CategoryRepository categoryRepository;
+    @Autowired private TransactionRepository transactionRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void cleanup() {
+        transactionRepository.deleteAll();
         categoryRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -237,14 +240,25 @@ class AuthControllerIntegrationTest {
     void protectedEndpoint_withValidToken_passesSecurity() throws Exception {
         String token = registerUser("authz@example.com", "senha12345");
 
-        // /transactions ainda nao existe; o filtro deixa passar autenticado e o MVC responde 404.
+        // Com token valido, /transactions responde 200 com uma Page vazia.
         mockMvc.perform(get("/transactions").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void protectedEndpoint_withValidTokenOnUnknownPath_returnsProblemDetail404() throws Exception {
+        String token = registerUser("authz-404@example.com", "senha12345");
+
+        mockMvc.perform(get("/rota-inexistente").header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:resource-not-found"))
                 .andExpect(jsonPath("$.title").value("Recurso nao encontrado"))
                 .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.instance").value("/transactions"));
+                .andExpect(jsonPath("$.instance").value("/rota-inexistente"));
     }
 
     @Test

@@ -118,6 +118,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 instanceUri(request));
     }
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ProblemDetail handleResourceNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
+        return createProblem(
+                HttpStatus.NOT_FOUND,
+                ex.getTitle(),
+                ex.getMessage(),
+                ex.getType(),
+                instanceUri(request));
+    }
+
     @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class})
     public ProblemDetail handleBadCredentials(AuthenticationException ex, HttpServletRequest request) {
         return createProblem(
