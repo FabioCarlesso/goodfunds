@@ -8,9 +8,11 @@ import com.goodfunds.domain.User;
 import com.goodfunds.dto.TransactionRequest;
 import com.goodfunds.dto.TransactionResponse;
 import com.goodfunds.exception.CategoryNotFoundException;
+import com.goodfunds.exception.InvalidTransactionFilterException;
 import com.goodfunds.exception.TransactionNotFoundException;
 import com.goodfunds.repository.CategoryRepository;
 import com.goodfunds.repository.TransactionRepository;
+import com.goodfunds.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -21,6 +23,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
@@ -43,6 +46,7 @@ class TransactionServiceTest {
 
     @Mock private TransactionRepository transactionRepository;
     @Mock private CategoryRepository categoryRepository;
+    @Mock private UserRepository userRepository;
 
     @InjectMocks
     private TransactionService transactionService;
@@ -58,16 +62,17 @@ class TransactionServiceTest {
                 FormaPagamento.PIX,
                 category.getId());
 
+        when(userRepository.getReferenceById(user.getId())).thenReturn(user);
         when(categoryRepository.findByIdAndUserId(category.getId(), user.getId()))
                 .thenReturn(Optional.of(category));
-        when(transactionRepository.save(any(Transaction.class)))
+        when(transactionRepository.saveAndFlush(any(Transaction.class)))
                 .thenAnswer(invocation -> {
                     Transaction tx = invocation.getArgument(0);
                     tx.setId(UUID.randomUUID());
                     return tx;
                 });
 
-        TransactionResponse response = transactionService.create(user, request);
+        TransactionResponse response = transactionService.create(user.getId(), request);
 
         assertThat(response.descricao()).isEqualTo("Mercado");
         assertThat(response.valor()).isEqualByComparingTo("125.50");
@@ -79,7 +84,7 @@ class TransactionServiceTest {
         assertThat(response.invoiceId()).isNull();
 
         ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
-        verify(transactionRepository).save(captor.capture());
+        verify(transactionRepository).saveAndFlush(captor.capture());
         Transaction saved = captor.getValue();
         assertThat(saved.getUser()).isSameAs(user);
         assertThat(saved.getCategory()).isSameAs(category);
@@ -97,15 +102,16 @@ class TransactionServiceTest {
                 FormaPagamento.DINHEIRO,
                 category.getId());
 
+        when(userRepository.getReferenceById(user.getId())).thenReturn(user);
         when(categoryRepository.findByIdAndUserId(category.getId(), user.getId()))
                 .thenReturn(Optional.of(category));
-        when(transactionRepository.save(any(Transaction.class)))
+        when(transactionRepository.saveAndFlush(any(Transaction.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        transactionService.create(user, request);
+        transactionService.create(user.getId(), request);
 
         ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
-        verify(transactionRepository).save(captor.capture());
+        verify(transactionRepository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getDescricao()).isEqualTo("Cinema");
     }
 
@@ -120,14 +126,15 @@ class TransactionServiceTest {
                 FormaPagamento.PIX,
                 categoryId);
 
+        when(userRepository.getReferenceById(user.getId())).thenReturn(user);
         when(categoryRepository.findByIdAndUserId(categoryId, user.getId()))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> transactionService.create(user, request))
+        assertThatThrownBy(() -> transactionService.create(user.getId(), request))
                 .isInstanceOf(CategoryNotFoundException.class)
                 .hasMessageContaining(categoryId.toString());
 
-        verify(transactionRepository, never()).save(any());
+        verify(transactionRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -156,8 +163,9 @@ class TransactionServiceTest {
                 .thenReturn(Optional.of(transaction));
         when(categoryRepository.findByIdAndUserId(newCategory.getId(), user.getId()))
                 .thenReturn(Optional.of(newCategory));
+        when(transactionRepository.saveAndFlush(transaction)).thenReturn(transaction);
 
-        TransactionResponse response = transactionService.update(user, transaction.getId(), request);
+        TransactionResponse response = transactionService.update(user.getId(), transaction.getId(), request);
 
         assertThat(response.descricao()).isEqualTo("Atualizado");
         assertThat(response.valor()).isEqualByComparingTo("80.00");
@@ -167,6 +175,7 @@ class TransactionServiceTest {
 
         assertThat(transaction.getDescricao()).isEqualTo("Atualizado");
         assertThat(transaction.getCategory()).isSameAs(newCategory);
+        verify(transactionRepository).saveAndFlush(transaction);
     }
 
     @Test
@@ -182,7 +191,7 @@ class TransactionServiceTest {
 
         when(transactionRepository.findByIdAndUserId(id, user.getId())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> transactionService.update(user, id, request))
+        assertThatThrownBy(() -> transactionService.update(user.getId(), id, request))
                 .isInstanceOf(TransactionNotFoundException.class)
                 .hasMessageContaining(id.toString());
 
@@ -216,7 +225,7 @@ class TransactionServiceTest {
         when(categoryRepository.findByIdAndUserId(otherCategoryId, user.getId()))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> transactionService.update(user, transaction.getId(), request))
+        assertThatThrownBy(() -> transactionService.update(user.getId(), transaction.getId(), request))
                 .isInstanceOf(CategoryNotFoundException.class);
     }
 
@@ -237,7 +246,7 @@ class TransactionServiceTest {
         when(transactionRepository.findByIdAndUserId(transaction.getId(), user.getId()))
                 .thenReturn(Optional.of(transaction));
 
-        transactionService.delete(user, transaction.getId());
+        transactionService.delete(user.getId(), transaction.getId());
 
         verify(transactionRepository).delete(transaction);
     }
@@ -248,7 +257,7 @@ class TransactionServiceTest {
         UUID id = UUID.randomUUID();
         when(transactionRepository.findByIdAndUserId(id, user.getId())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> transactionService.delete(user, id))
+        assertThatThrownBy(() -> transactionService.delete(user.getId(), id))
                 .isInstanceOf(TransactionNotFoundException.class);
 
         verify(transactionRepository, never()).delete(any(Transaction.class));
@@ -268,17 +277,17 @@ class TransactionServiceTest {
                 .user(user)
                 .build();
 
-        Pageable pageable = PageRequest.of(0, 10);
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "data"));
         Page<Transaction> page = new PageImpl<>(List.of(tx), pageable, 1);
         when(transactionRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
 
         Page<TransactionResponse> result = transactionService.search(
-                user,
+                user.getId(),
                 YearMonth.of(2026, 5),
                 category.getId(),
                 TipoCategoria.DESPESA,
-                LocalDate.of(2026, 5, 1),
-                LocalDate.of(2026, 5, 31),
+                null,
+                null,
                 pageable);
 
         assertThat(result.getTotalElements()).isEqualTo(1);
@@ -290,14 +299,76 @@ class TransactionServiceTest {
     void search_withoutFilters_stillScopesByUser() {
         User user = buildUser();
         Pageable pageable = PageRequest.of(0, 5);
-        when(transactionRepository.findAll(any(Specification.class), eq(pageable)))
+        when(transactionRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(), pageable, 0));
 
         Page<TransactionResponse> result = transactionService.search(
-                user, null, null, null, null, null, pageable);
+                user.getId(), null, null, null, null, null, pageable);
 
         assertThat(result.getTotalElements()).isZero();
-        verify(transactionRepository).findAll(any(Specification.class), eq(pageable));
+        verify(transactionRepository).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    void search_whenFromIsAfterTo_throws() {
+        User user = buildUser();
+        Pageable pageable = PageRequest.of(0, 10);
+
+        assertThatThrownBy(() -> transactionService.search(
+                user.getId(), null, null, null,
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 5, 1),
+                pageable))
+                .isInstanceOf(InvalidTransactionFilterException.class)
+                .hasMessageContaining("from");
+
+        verify(transactionRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    void search_whenRefCombinedWithRange_throws() {
+        User user = buildUser();
+        Pageable pageable = PageRequest.of(0, 10);
+
+        assertThatThrownBy(() -> transactionService.search(
+                user.getId(), YearMonth.of(2026, 5), null, null,
+                LocalDate.of(2026, 5, 1), null, pageable))
+                .isInstanceOf(InvalidTransactionFilterException.class);
+
+        verify(transactionRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    void search_dropsUnsafeSortFieldsAndFallsBackToDefault() {
+        User user = buildUser();
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "user.senha"));
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        when(transactionRepository.findAll(any(Specification.class), captor.capture()))
+                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+        transactionService.search(user.getId(), null, null, null, null, null, pageable);
+
+        Sort effectiveSort = captor.getValue().getSort();
+        assertThat(effectiveSort.getOrderFor("user.senha")).isNull();
+        assertThat(effectiveSort.getOrderFor("data")).isNotNull();
+        assertThat(effectiveSort.getOrderFor("data").getDirection()).isEqualTo(Sort.Direction.DESC);
+    }
+
+    @Test
+    void search_keepsAllowedSortFields() {
+        User user = buildUser();
+        Pageable pageable = PageRequest.of(0, 10,
+                Sort.by(Sort.Order.asc("valor"), Sort.Order.desc("user.senha")));
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        when(transactionRepository.findAll(any(Specification.class), captor.capture()))
+                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+        transactionService.search(user.getId(), null, null, null, null, null, pageable);
+
+        Sort effectiveSort = captor.getValue().getSort();
+        assertThat(effectiveSort.getOrderFor("valor")).isNotNull();
+        assertThat(effectiveSort.getOrderFor("valor").getDirection()).isEqualTo(Sort.Direction.ASC);
+        assertThat(effectiveSort.getOrderFor("user.senha")).isNull();
     }
 
     private static User buildUser() {

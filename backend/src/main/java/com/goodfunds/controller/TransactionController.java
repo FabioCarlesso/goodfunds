@@ -1,10 +1,9 @@
 package com.goodfunds.controller;
 
 import com.goodfunds.domain.TipoCategoria;
-import com.goodfunds.domain.User;
 import com.goodfunds.dto.TransactionRequest;
 import com.goodfunds.dto.TransactionResponse;
-import com.goodfunds.repository.UserRepository;
+import com.goodfunds.security.AuthenticatedUser;
 import com.goodfunds.service.TransactionService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -12,11 +11,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,32 +34,28 @@ import java.util.UUID;
 public class TransactionController {
 
     private final TransactionService transactionService;
-    private final UserRepository userRepository;
 
-    public TransactionController(TransactionService transactionService, UserRepository userRepository) {
+    public TransactionController(TransactionService transactionService) {
         this.transactionService = transactionService;
-        this.userRepository = userRepository;
     }
 
     @GetMapping
     public Page<TransactionResponse> list(
-            @AuthenticationPrincipal UserDetails principal,
+            @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth ref,
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) TipoCategoria tipo,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @PageableDefault(size = 20, sort = "data", direction = Sort.Direction.DESC) Pageable pageable) {
-        User user = currentUser(principal);
-        return transactionService.search(user, ref, categoryId, tipo, from, to, pageable);
+        return transactionService.search(principal.getUserId(), ref, categoryId, tipo, from, to, pageable);
     }
 
     @PostMapping
     public ResponseEntity<TransactionResponse> create(
-            @AuthenticationPrincipal UserDetails principal,
+            @AuthenticationPrincipal AuthenticatedUser principal,
             @Valid @RequestBody TransactionRequest request) {
-        User user = currentUser(principal);
-        TransactionResponse response = transactionService.create(user, request);
+        TransactionResponse response = transactionService.create(principal.getUserId(), request);
         URI location = UriComponentsBuilder.fromPath("/transactions/{id}")
                 .buildAndExpand(response.id())
                 .toUri();
@@ -72,25 +64,17 @@ public class TransactionController {
 
     @PutMapping("/{id}")
     public ResponseEntity<TransactionResponse> update(
-            @AuthenticationPrincipal UserDetails principal,
+            @AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable UUID id,
             @Valid @RequestBody TransactionRequest request) {
-        User user = currentUser(principal);
-        return ResponseEntity.ok(transactionService.update(user, id, request));
+        return ResponseEntity.ok(transactionService.update(principal.getUserId(), id, request));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
-            @AuthenticationPrincipal UserDetails principal,
+            @AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable UUID id) {
-        User user = currentUser(principal);
-        transactionService.delete(user, id);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-    }
-
-    private User currentUser(UserDetails principal) {
-        return userRepository.findByEmail(principal.getUsername())
-                .orElseThrow(() -> new UsernameNotFoundException(
-                        "Usuario autenticado nao encontrado: " + principal.getUsername()));
+        transactionService.delete(principal.getUserId(), id);
+        return ResponseEntity.noContent().build();
     }
 }

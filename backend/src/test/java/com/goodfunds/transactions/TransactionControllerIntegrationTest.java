@@ -4,10 +4,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.goodfunds.domain.Category;
 import com.goodfunds.domain.FormaPagamento;
+import com.goodfunds.domain.Invoice;
+import com.goodfunds.domain.OrigemFatura;
+import com.goodfunds.domain.StatusFatura;
 import com.goodfunds.domain.TipoCategoria;
 import com.goodfunds.domain.Transaction;
 import com.goodfunds.domain.User;
 import com.goodfunds.repository.CategoryRepository;
+import com.goodfunds.repository.InvoiceRepository;
 import com.goodfunds.repository.TransactionRepository;
 import com.goodfunds.repository.UserRepository;
 import com.goodfunds.security.JwtService;
@@ -24,6 +28,8 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.YearMonth;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,6 +51,7 @@ class TransactionControllerIntegrationTest {
     @Autowired private UserRepository userRepository;
     @Autowired private CategoryRepository categoryRepository;
     @Autowired private TransactionRepository transactionRepository;
+    @Autowired private InvoiceRepository invoiceRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtService jwtService;
 
@@ -60,6 +67,7 @@ class TransactionControllerIntegrationTest {
     @BeforeEach
     void setup() {
         transactionRepository.deleteAll();
+        invoiceRepository.deleteAll();
         categoryRepository.deleteAll();
         userRepository.deleteAll();
 
@@ -447,6 +455,171 @@ class TransactionControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].descricao").value("Other tx"));
+    }
+
+    @Test
+    void update_preservesInvoiceLink() throws Exception {
+        Invoice invoice = invoiceRepository.save(Invoice.builder()
+                .arquivo("fatura.pdf")
+                .origem(OrigemFatura.OUTROS)
+                .status(StatusFatura.PROCESSADA)
+                .mesReferencia(YearMonth.of(2026, 5))
+                .totalValor(new BigDecimal("123.45"))
+                .user(owner)
+                .build());
+
+        Transaction tx = transactionRepository.save(Transaction.builder()
+                .descricao("Da fatura")
+                .valor(new BigDecimal("50.00"))
+                .data(LocalDate.of(2026, 5, 1))
+                .formaPagamento(FormaPagamento.CARTAO_CREDITO)
+                .category(alimentacao)
+                .invoice(invoice)
+                .user(owner)
+                .build());
+
+        String payload = """
+                {
+                  "descricao": "Editada",
+                  "valor": 60.00,
+                  "data": "2026-05-15",
+                  "formaPagamento": "PIX",
+                  "categoryId": "%s"
+                }
+                """.formatted(lazer.getId());
+
+        mockMvc.perform(put("/transactions/" + tx.getId())
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.invoiceId").value(invoice.getId().toString()));
+
+        Transaction reloaded = transactionRepository.findById(tx.getId()).orElseThrow();
+        assertThat(reloaded.getInvoice()).isNotNull();
+        assertThat(reloaded.getInvoice().getId()).isEqualTo(invoice.getId());
+    }
+
+    @Test
+    void update_returnsFreshUpdatedAt() throws Exception {
+        Transaction tx = persistTransaction(owner, alimentacao, "Original", "10.00",
+                LocalDate.of(2026, 5, 1), FormaPagamento.PIX);
+        OffsetDateTime initialUpdatedAt = tx.getUpdatedAt();
+        // Garante uma diferenca de tempo perceptivel entre criacao e update.
+        Thread.sleep(5);
+
+        String payload = """
+                {
+                  "descricao": "Atualizado",
+                  "valor": 20.00,
+                  "data": "2026-05-02",
+                  "formaPagamento": "PIX",
+                  "categoryId": "%s"
+                }
+                """.formatted(alimentacao.getId());
+
+        MvcResult result = mockMvc.perform(put("/transactions/" + tx.getId())
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+        OffsetDateTime responseUpdatedAt = OffsetDateTime.parse(body.get("updatedAt").asText());
+
+        assertThat(responseUpdatedAt).isAfterOrEqualTo(initialUpdatedAt);
+        Transaction reloaded = transactionRepository.findById(tx.getId()).orElseThrow();
+        assertThat(reloaded.getUpdatedAt()).isEqualTo(responseUpdatedAt);
+    }
+
+    @Test
+    void list_whenFromIsAfterTo_returns400() throws Exception {
+        mockMvc.perform(get("/transactions")
+                        .param("from", "2026-06-01")
+                        .param("to", "2026-05-01")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:invalid-filter"));
+    }
+
+    @Test
+    void list_whenRefCombinedWithRange_returns400() throws Exception {
+        mockMvc.perform(get("/transactions")
+                        .param("ref", "2026-05")
+                        .param("from", "2026-05-01")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:invalid-filter"));
+    }
+
+    @Test
+    void list_withInvalidTipo_returnsValidationProblemDetail() throws Exception {
+        mockMvc.perform(get("/transactions")
+                        .param("tipo", "FOO")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:validation-error"))
+                .andExpect(jsonPath("$.errors.tipo").exists());
+    }
+
+    @Test
+    void list_withInvalidRef_returnsValidationProblemDetail() throws Exception {
+        mockMvc.perform(get("/transactions")
+                        .param("ref", "not-a-month")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:validation-error"))
+                .andExpect(jsonPath("$.errors.ref").exists());
+    }
+
+    @Test
+    void list_ignoresUnsafeSortField() throws Exception {
+        persistTransaction(owner, alimentacao, "Antiga", "10.00",
+                LocalDate.of(2026, 5, 1), FormaPagamento.PIX);
+        persistTransaction(owner, alimentacao, "Recente", "20.00",
+                LocalDate.of(2026, 5, 10), FormaPagamento.PIX);
+
+        // Sort em campo nao permitido: o servico cai para o default (data,desc) e nao 500.
+        mockMvc.perform(get("/transactions")
+                        .param("sort", "user.senha,asc")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].descricao").value("Recente"))
+                .andExpect(jsonPath("$.content[1].descricao").value("Antiga"));
+    }
+
+    @Test
+    void list_capsPageSizeAtConfiguredMax() throws Exception {
+        // max-page-size = 100 em application.yml
+        mockMvc.perform(get("/transactions")
+                        .param("size", "5000")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(100));
+    }
+
+    @Test
+    void create_withValorWithTooManyDecimals_returns400() throws Exception {
+        String payload = """
+                {
+                  "descricao": "x",
+                  "valor": 10.123,
+                  "data": "2026-05-10",
+                  "formaPagamento": "PIX",
+                  "categoryId": "%s"
+                }
+                """.formatted(alimentacao.getId());
+
+        mockMvc.perform(post("/transactions")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:validation-error"))
+                .andExpect(jsonPath("$.errors.valor").exists());
     }
 
     private Transaction persistTransaction(User user, Category category, String descricao,
