@@ -1,0 +1,16 @@
+target/
+*.class
+*.jar
+*.war
+*.ear
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+.git/
+.gitignore
+logs/
+*.log
+hs_err_pid*

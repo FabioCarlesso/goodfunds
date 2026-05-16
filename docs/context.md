@@ -8,10 +8,11 @@ Goodfunds e um sistema de controle financeiro pessoal para uso proprio. O MVP de
 
 ```text
 goodfunds/
-├── backend/                  # Backend Spring Boot
+├── backend/                  # Backend Spring Boot (com Dockerfile multi-stage)
 ├── docs/                     # Contextos, planejamento e documentacao
 ├── frontend/                 # Frontend Vite + React + TypeScript + Tailwind (futuro)
-└── docker-compose.yml        # Orquestracao local futura
+├── docker-compose.yml        # Orquestracao local (app + postgres)
+└── .env.example              # Template das variaveis de ambiente do compose
 ```
 
 No estado atual, apenas o backend foi iniciado.
@@ -40,7 +41,7 @@ Contexto e planejamento:
 - PDF: Apache PDFBox para parser de faturas.
 - Frontend: Vite, React, TypeScript e Tailwind em sprint futura.
 - Testes: JUnit 5 no backend.
-- Infra: Docker Compose em sprint futura.
+- Infra: Docker Compose com servicos `app` e `postgres` para execucao local end-to-end (issue #11).
 
 ## Estado atual
 
@@ -56,10 +57,10 @@ Contexto e planejamento:
 - CRUD de `Transaction` implementado (issue #12): `GET /transactions` paginado com filtros (`ref`, `categoryId`, `tipo`, `from`, `to`, `page`, `size`, `sort`), `POST/PUT/DELETE /transactions[/{id}]`; todas as rotas escopadas pelo usuario do JWT e com validacao de propriedade da categoria. `size` capeado em 100, `sort` restrito a allowlist (`data`, `valor`, `descricao`, `createdAt`, `updatedAt`, `formaPagamento`), `ref` mutuamente exclusivo com `from`/`to` e `from <= to`.
 - Testes de backend cobrem schema/migrations, mapeamentos JPA, geracao/validacao de JWT, fluxos HTTP de autenticacao, testes unitarios do seed de categorias padrao em `AuthService`, testes unitarios do `TransactionService` e integracao HTTP completa do CRUD de Transactions.
 - Documentacao tecnica criada em `docs/` (issue #35).
-- Frontend e Docker Compose ainda nao foram criados.
+- Docker Compose basico criado na raiz (issue #11) com servicos `app` (Spring Boot, build multi-stage via `backend/Dockerfile`) e `postgres` (PostgreSQL 16, volume nomeado `goodfunds-postgres-data`). Variaveis de ambiente em `.env` (template em `.env.example`).
+- Frontend ainda nao foi criado.
 
 ## Proximos passos gerais
 
 - Implementar services e controllers de Categories, Invoices, Budgets e Reports sobre a autenticacao existente (Transactions ja foi implementado na issue #12).
 - Criar frontend quando a sprint correspondente iniciar.
-- Adicionar Docker Compose para execucao end-to-end.
