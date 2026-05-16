@@ -10,6 +10,7 @@ import com.goodfunds.domain.StatusFatura;
 import com.goodfunds.domain.TipoCategoria;
 import com.goodfunds.domain.Transaction;
 import com.goodfunds.domain.User;
+import com.goodfunds.repository.BudgetRepository;
 import com.goodfunds.repository.CategoryRepository;
 import com.goodfunds.repository.InvoiceRepository;
 import com.goodfunds.repository.TransactionRepository;
@@ -52,6 +53,7 @@ class TransactionControllerIntegrationTest {
     @Autowired private CategoryRepository categoryRepository;
     @Autowired private TransactionRepository transactionRepository;
     @Autowired private InvoiceRepository invoiceRepository;
+    @Autowired private BudgetRepository budgetRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtService jwtService;
 
@@ -68,6 +70,7 @@ class TransactionControllerIntegrationTest {
     void setup() {
         transactionRepository.deleteAll();
         invoiceRepository.deleteAll();
+        budgetRepository.deleteAll();
         categoryRepository.deleteAll();
         userRepository.deleteAll();
 
