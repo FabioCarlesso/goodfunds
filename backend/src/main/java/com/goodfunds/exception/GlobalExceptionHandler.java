@@ -171,6 +171,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 instanceUri(request));
     }
 
+    @ExceptionHandler(CategoryInUseException.class)
+    public ProblemDetail handleCategoryInUse(CategoryInUseException ex, HttpServletRequest request) {
+        return createProblem(
+                HttpStatus.CONFLICT,
+                "Categoria em uso",
+                ex.getMessage(),
+                "category-in-use",
+                instanceUri(request));
+    }
+
     @ExceptionHandler(InvalidTransactionFilterException.class)
     public ProblemDetail handleInvalidFilter(InvalidTransactionFilterException ex, HttpServletRequest request) {
         return createProblem(

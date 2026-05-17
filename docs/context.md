@@ -54,6 +54,7 @@ Contexto e planejamento:
 - Estrutura de pacotes `com.goodfunds` criada com `package-info.java` em cada pacote (issue #2).
 - Entidades JPA e repositories criados para `User`, `Category`, `Invoice`, `Transaction` e `Budget`.
 - Autenticacao JWT implementada: `POST /auth/register` cria usuario e 8 categorias padrao, `POST /auth/login` valida credenciais, tokens Bearer de 24h, senhas com BCrypt, rotas publicas de auth/actuator/swagger e demais rotas protegidas.
+- CRUD de `Category` implementado (issue #13): `GET /categories` (lista ordenada por `nome ASC`, com filtro opcional `tipo`), `POST/PUT/DELETE /categories[/{id}]`; todas as rotas escopadas pelo usuario do JWT. `DELETE` retorna 409 `category-in-use` quando ha transacoes ou orcamentos referenciando a categoria.
 - CRUD de `Transaction` implementado (issue #12): `GET /transactions` paginado com filtros (`ref`, `categoryId`, `tipo`, `from`, `to`, `page`, `size`, `sort`), `POST/PUT/DELETE /transactions[/{id}]`; todas as rotas escopadas pelo usuario do JWT e com validacao de propriedade da categoria. `size` capeado em 100, `sort` restrito a allowlist (`data`, `valor`, `descricao`, `createdAt`, `updatedAt`, `formaPagamento`), `ref` mutuamente exclusivo com `from`/`to` e `from <= to`.
 - Testes de backend cobrem schema/migrations, mapeamentos JPA, geracao/validacao de JWT, fluxos HTTP de autenticacao, testes unitarios do seed de categorias padrao em `AuthService`, testes unitarios do `TransactionService` e integracao HTTP completa do CRUD de Transactions.
 - Documentacao tecnica criada em `docs/` (issue #35).
@@ -62,5 +63,5 @@ Contexto e planejamento:
 
 ## Proximos passos gerais
 
-- Implementar services e controllers de Categories, Invoices, Budgets e Reports sobre a autenticacao existente (Transactions ja foi implementado na issue #12).
+- Implementar services e controllers de Invoices, Budgets e Reports sobre a autenticacao existente (Transactions implementado na issue #12, Categories na issue #13).
 - Criar frontend quando a sprint correspondente iniciar.
