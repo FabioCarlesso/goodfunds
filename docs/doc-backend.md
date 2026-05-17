@@ -111,8 +111,8 @@ Cada pacote possui um `package-info.java` documentando seu papel.
 | arquivo | String | Path relativo do PDF em `./uploads/{userId}/` |
 | origem | Enum | `NUBANK`, `ITAU`, `OUTROS` |
 | status | Enum | `PENDENTE_PARSE`, `PROCESSADA`, `ERRO` |
-| mesReferencia | YearMonth | Mês da fatura |
-| totalValor | BigDecimal | Valor total da fatura |
+| mesReferencia | YearMonth | Mês da fatura (nullable; preenchido pelo parser) |
+| totalValor | BigDecimal | Valor total da fatura (nullable; preenchido pelo parser) |
 | transactions | List\<Transaction\> | Lançamentos gerados pelo parser |
 | user | User | Dono da fatura |
 | createdAt | LocalDateTime | Auditoria |
@@ -169,9 +169,16 @@ Body de `POST/PUT`: `{ "nome": "Lazer", "tipo": "DESPESA" }`. `nome` obrigatóri
 
 | Método | Rota | Autenticação | Descrição |
 |---|---|---|---|
-| POST | `/invoices/upload` | JWT | Upload de fatura PDF (multipart) |
+| POST | `/invoices/upload` | JWT | Upload de fatura PDF (multipart; 201 + `Location`) |
 | GET | `/invoices` | JWT | Lista faturas do usuário |
 | GET | `/invoices/{id}` | JWT | Detalhe da fatura + transações geradas |
+
+`POST /invoices/upload` recebe `multipart/form-data` com:
+
+- `file` (obrigatório): arquivo PDF (`application/pdf`, com assinatura `%PDF`).
+- `origem` (opcional, default `NUBANK`): valores do enum `OrigemFatura` (`NUBANK`, `ITAU`, `OUTROS`).
+
+O arquivo é salvo em `{app.uploads.dir}/{userId}/{uuid}.pdf` e a `Invoice` é persistida com `status = PENDENTE_PARSE`. Os campos `mesReferencia` e `totalValor` ficam nulos até o parser processar a fatura. Limites controlados por `spring.servlet.multipart.max-file-size` (default 10MB) — excedeu retorna 413 `max-upload-size-exceeded`. Validações de arquivo retornam 400 `invalid-invoice-file`.
 
 ### Budgets
 

@@ -18,11 +18,13 @@ import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -151,6 +153,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problem, headers, HttpStatus.BAD_REQUEST, request);
     }
 
+    @Override
+    protected ResponseEntity<Object> handleMissingServletRequestPart(MissingServletRequestPartException ex,
+                                                                     HttpHeaders headers,
+                                                                     HttpStatusCode status,
+                                                                     WebRequest request) {
+        ProblemDetail problem = createProblem(
+                HttpStatus.BAD_REQUEST,
+                "Erro de validacao",
+                "Requisicao invalida",
+                "validation-error",
+                instanceUri(request));
+        Map<String, String> errors = new LinkedHashMap<>();
+        errors.put(ex.getRequestPartName(), "parte obrigatoria ausente");
+        problem.setProperty("errors", errors);
+        return handleExceptionInternal(ex, problem, headers, HttpStatus.BAD_REQUEST, request);
+    }
+
     @ExceptionHandler(EmailAlreadyInUseException.class)
     public ProblemDetail handleEmailInUse(EmailAlreadyInUseException ex, HttpServletRequest request) {
         return createProblem(
@@ -189,6 +208,30 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 ex.getMessage(),
                 "invalid-filter",
                 instanceUri(request));
+    }
+
+    @ExceptionHandler(InvalidInvoiceFileException.class)
+    public ProblemDetail handleInvalidInvoiceFile(InvalidInvoiceFileException ex, HttpServletRequest request) {
+        return createProblem(
+                HttpStatus.BAD_REQUEST,
+                "Arquivo de fatura invalido",
+                ex.getMessage(),
+                "invalid-invoice-file",
+                instanceUri(request));
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex,
+                                                                          HttpHeaders headers,
+                                                                          HttpStatusCode status,
+                                                                          WebRequest request) {
+        ProblemDetail problem = createProblem(
+                HttpStatus.PAYLOAD_TOO_LARGE,
+                "Arquivo muito grande",
+                "Tamanho do arquivo excede o limite permitido",
+                "max-upload-size-exceeded",
+                instanceUri(request));
+        return handleExceptionInternal(ex, problem, headers, HttpStatus.PAYLOAD_TOO_LARGE, request);
     }
 
     @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class})
