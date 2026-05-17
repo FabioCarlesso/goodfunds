@@ -13,6 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -60,17 +62,24 @@ public class InvoiceService {
             throw new IllegalStateException("Falha ao salvar arquivo da fatura", ex);
         }
 
-        String relativePath = userId + "/" + filename;
-        User userRef = userRepository.getReferenceById(userId);
-        Invoice invoice = Invoice.builder()
-                .arquivo(relativePath)
-                .origem(origemFinal)
-                .status(StatusFatura.PENDENTE_PARSE)
-                .user(userRef)
-                .build();
+        registerRollbackCleanup(target);
 
-        Invoice saved = invoiceRepository.save(invoice);
-        return InvoiceResponse.from(saved);
+        try {
+            String relativePath = userId + "/" + filename;
+            User userRef = userRepository.getReferenceById(userId);
+            Invoice invoice = Invoice.builder()
+                    .arquivo(relativePath)
+                    .origem(origemFinal)
+                    .status(StatusFatura.PENDENTE_PARSE)
+                    .user(userRef)
+                    .build();
+
+            Invoice saved = invoiceRepository.save(invoice);
+            return InvoiceResponse.from(saved);
+        } catch (RuntimeException ex) {
+            deleteFileIfExists(target);
+            throw ex;
+        }
     }
 
     private void validateFile(MultipartFile file) {
@@ -100,6 +109,28 @@ public class InvoiceService {
             return true;
         } catch (IOException ex) {
             throw new InvalidInvoiceFileException("Nao foi possivel ler o arquivo enviado");
+        }
+    }
+
+    private void registerRollbackCleanup(Path target) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    deleteFileIfExists(target);
+                }
+            }
+        });
+    }
+
+    private void deleteFileIfExists(Path target) {
+        try {
+            Files.deleteIfExists(target);
+        } catch (IOException cleanupEx) {
+            log.warn("Falha ao remover fatura apos rollback: {}", target, cleanupEx);
         }
     }
 

@@ -9,7 +9,7 @@ O repositorio contem o bootstrap inicial do backend em `backend/`, criado com Sp
 - Spring Boot: 3.3.4.
 - Perfis configurados: `dev` (PostgreSQL local), `test` (H2 in-memory) e `prod` (variaveis de ambiente).
 - Perfil padrao: `dev`.
-- Flyway: habilitado em todos os perfis. Migration `V1__init.sql` cria as 5 tabelas: `users`, `categories`, `invoices`, `transactions`, `budgets`; `V2__add_audit_columns.sql` adiciona colunas de auditoria em `budgets` e `invoices`.
+- Flyway: habilitado em todos os perfis. Migration `V1__init.sql` cria as 5 tabelas: `users`, `categories`, `invoices`, `transactions`, `budgets`; `V2__add_audit_columns.sql` adiciona colunas de auditoria em `budgets` e `invoices`; `V3__invoice_parse_fields_nullable.sql` torna `invoices.mes_referencia` e `invoices.total_valor` nullable para o fluxo de parse posterior.
 - Entidades JPA: `User`, `Category`, `Invoice`, `Transaction` e `Budget` mapeadas em `com.goodfunds.domain`, com enums (`Role`, `TipoCategoria`, `FormaPagamento`, `OrigemFatura`, `StatusFatura`) e repositorios Spring Data JPA em `com.goodfunds.repository`. UUIDs gerados via `GenerationType.UUID`; timestamps com `@CreationTimestamp`/`@UpdateTimestamp`; `mesReferencia` mapeado para `YearMonth` via `AttributeConverter`.
 - PostgreSQL: perfis `dev` e `prod` usam PostgreSQL. Credenciais dev tem defaults locais; prod le de variaveis de ambiente.
 - Actuator: expostos apenas `health` e `info`; `/actuator/health` e subpaths de health sao publicos, e `show-details: never` garante que detalhes internos de saude nao sao exibidos publicamente (issue #8).
@@ -19,6 +19,7 @@ O repositorio contem o bootstrap inicial do backend em `backend/`, criado com Sp
 - Endpoints publicos `POST /auth/register` (201, cria usuario + 8 categorias padrao) e `POST /auth/login` (200, valida credenciais), ambos retornando `{ token, tokenType: "Bearer", expiresInMillis }`. Email e normalizado para lowercase.
 - Endpoints autenticados de `Category` (issue #13): `GET /categories` (lista ordenada por `nome ASC`, com filtro opcional `tipo=RECEITA|DESPESA`), `POST /categories` (201 com header `Location`), `PUT /categories/{id}` (200), `DELETE /categories/{id}` (204). Todos escopados pelo usuario do JWT — categoria inexistente ou de outro usuario retorna 404 `category-not-found`. Validacoes: `nome` obrigatorio (max 255, trimado antes de persistir), `tipo` obrigatorio. `DELETE` retorna 409 `category-in-use` se houver transacoes ou orcamentos referenciando a categoria (pre-check antes do `delete`, alinhado com FK `ON DELETE RESTRICT`).
 - Endpoints autenticados de `Transaction` (issue #12): `GET /transactions` (Page com filtros opcionais `ref=YYYY-MM`, `categoryId`, `tipo`, `from`, `to`, `page`, `size`, `sort`; default `sort=data,desc`, `size=20`), `POST /transactions` (201 com header `Location`), `PUT /transactions/{id}` (200), `DELETE /transactions/{id}` (204). Todos escopados pelo usuario do JWT; categoria precisa pertencer ao usuario (caso contrario 404 `category-not-found`); transacao inexistente ou de outro usuario retorna 404 `transaction-not-found`. Validacoes: `descricao` obrigatoria (max 500), `valor > 0` com no maximo 2 casas decimais (`@Digits(integer=17, fraction=2)` para casar com `NUMERIC(19,2)`), `data`, `formaPagamento` e `categoryId` obrigatorios. Campo `invoiceId` so e populado quando a transacao foi gerada pelo parser de fatura — endpoints manuais nao o alteram (regressao coberta em `TransactionControllerIntegrationTest#update_preservesInvoiceLink`). `PUT` faz `saveAndFlush` para garantir que `@UpdateTimestamp` seja aplicado antes de mapear a resposta.
+- Endpoint autenticado de upload de `Invoice` (issue #14): `POST /invoices/upload` recebe `multipart/form-data` com `file` obrigatorio (`application/pdf` e assinatura `%PDF`) e `origem` opcional (`NUBANK` default; tambem aceita `ITAU` e `OUTROS`). Salva o PDF em `{app.uploads.dir}/{userId}/{uuid}.pdf`, configurado por `APP_UPLOADS_DIR` com default `./uploads`, cria `Invoice` com `status=PENDENTE_PARSE` e `mesReferencia`/`totalValor` nulos ate o parser. O arquivo e removido se a persistencia falhar ou a transacao fizer rollback.
 - Regras de paginacao e filtros do `GET /transactions`:
   - `size` limitado a `spring.data.web.pageable.max-page-size=100` (default `default-page-size=20`). Requisicoes com `size>100` sao automaticamente truncadas.
   - Campos permitidos em `sort`: `data`, `valor`, `descricao`, `createdAt`, `updatedAt`, `formaPagamento`. Qualquer outro campo e silenciosamente descartado, evitando property-name injection via JPA Specifications; quando nenhum campo valido sobra, o servico aplica o default `data,desc`.
@@ -79,7 +80,7 @@ cd backend
 ./mvnw verify
 ```
 
-A suite atual roda com profile `test` e cobre smoke test de contexto Spring, validacoes de schema/constraints via `MigrationSchemaTest`, mapeamentos JPA/repositories via `JpaMappingTest`, geracao/validacao de tokens em `JwtServiceTest`, fluxo HTTP de autenticacao (register, login, erros e protecao de rotas) em `AuthControllerIntegrationTest`, testes unitarios do CRUD de transacoes em `TransactionServiceTest` (mockando os repositorios), integracao HTTP completa (paginacao, filtros, validacoes e isolamento por usuario) em `TransactionControllerIntegrationTest`, testes unitarios do CRUD de categorias em `CategoryServiceTest` e integracao HTTP completa do CRUD de categorias em `CategoryControllerIntegrationTest` (lista ordenada, filtro por tipo, isolamento por usuario, conflito 409 ao deletar categoria em uso).
+A suite atual roda com profile `test` e cobre smoke test de contexto Spring, validacoes de schema/constraints via `MigrationSchemaTest`, mapeamentos JPA/repositories via `JpaMappingTest`, geracao/validacao de tokens em `JwtServiceTest`, fluxo HTTP de autenticacao (register, login, erros e protecao de rotas) em `AuthControllerIntegrationTest`, testes unitarios do CRUD de transacoes em `TransactionServiceTest` (mockando os repositorios), integracao HTTP completa (paginacao, filtros, validacoes e isolamento por usuario) em `TransactionControllerIntegrationTest`, testes unitarios do CRUD de categorias em `CategoryServiceTest`, integracao HTTP completa do CRUD de categorias em `CategoryControllerIntegrationTest` e upload de faturas em `InvoiceControllerIntegrationTest`/`InvoiceServiceTest`.
 
 ## Convencoes de schema
 
@@ -89,10 +90,10 @@ A suite atual roda com profile `test` e cobre smoke test de contexto Spring, val
 
 ## Decisoes temporarias
 
-- PDFBox e Springdoc ja estao no classpath porque fazem parte das dependencias base do MVP e serao usados em issues futuras.
+- PDFBox e Springdoc ja estao no classpath porque fazem parte das dependencias base do MVP. O upload de PDF ja existe; o parser da fatura ainda sera implementado em issue futura.
 - JWT sem refresh token no MVP (decisao explicita em `goodfunds-planejamento.md`).
 
 ## Proximos passos
 
-- Adicionar services e controllers de Invoices, Budgets e Reports sobre a infraestrutura de seguranca ja existente (CRUD de Transactions implementado na issue #12 e CRUD de Categories na issue #13).
+- Adicionar listagem/detalhe e parser de Invoices, alem de Budgets e Reports, sobre a infraestrutura de seguranca ja existente.
 - Expandir testes conforme funcionalidades forem implementadas.
