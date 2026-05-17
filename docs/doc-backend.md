@@ -158,10 +158,12 @@ Filtros disponíveis em `GET /transactions`: `?ref=YYYY-MM`, `categoryId`, `tipo
 
 | Método | Rota | Autenticação | Descrição |
 |---|---|---|---|
-| GET | `/categories` | JWT | Lista categorias do usuário |
-| POST | `/categories` | JWT | Cria categoria |
-| PUT | `/categories/{id}` | JWT | Atualiza categoria |
-| DELETE | `/categories/{id}` | JWT | Remove categoria |
+| GET | `/categories` | JWT | Lista categorias do usuário (ordenadas por `nome ASC`; filtro opcional `?tipo=RECEITA\|DESPESA`) |
+| POST | `/categories` | JWT | Cria categoria (201 + `Location`) |
+| PUT | `/categories/{id}` | JWT | Atualiza categoria (200) |
+| DELETE | `/categories/{id}` | JWT | Remove categoria (204; 409 `category-in-use` se houver transações ou orçamentos associados) |
+
+Body de `POST/PUT`: `{ "nome": "Lazer", "tipo": "DESPESA" }`. `nome` obrigatório (máx 255, é trimado); `tipo` obrigatório (`RECEITA` ou `DESPESA`). Categorias são escopadas pelo usuário do JWT — IDs inexistentes ou de outro usuário retornam 404 `category-not-found`.
 
 ### Invoices
 

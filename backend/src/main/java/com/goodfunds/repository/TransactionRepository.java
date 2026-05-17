@@ -16,6 +16,8 @@ public interface TransactionRepository
 
     Optional<Transaction> findByIdAndUserId(UUID id, UUID userId);
 
+    boolean existsByCategoryId(UUID categoryId);
+
     @Override
     @EntityGraph(attributePaths = {"category", "invoice"})
     Page<Transaction> findAll(Specification<Transaction> spec, Pageable pageable);

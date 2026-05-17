@@ -16,4 +16,6 @@ public interface BudgetRepository extends JpaRepository<Budget, UUID> {
     Page<Budget> findByUserIdAndAnoAndMes(UUID userId, Integer ano, Integer mes, Pageable pageable);
 
     Optional<Budget> findByUserIdAndCategoryIdAndAnoAndMes(UUID userId, UUID categoryId, Integer ano, Integer mes);
+
+    boolean existsByCategoryId(UUID categoryId);
 }
