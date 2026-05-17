@@ -99,9 +99,10 @@ Usuário seleciona categoria → preenche valor, data e descrição
 ```
 Usuário faz upload do PDF (Nubank)
 → POST /invoices/upload (multipart)
-→ PDF salvo em ./uploads/{userId}/
-→ NubankInvoiceParser extrai lançamentos com PDFBox
-→ Transações geradas e vinculadas à Invoice
+→ PDF salvo em {app.uploads.dir}/{userId}/
+→ Invoice criada com status PENDENTE_PARSE
+→ Parser futuro extrai lançamentos com PDFBox
+→ Transações são geradas e vinculadas à Invoice
 → Usuário pode ajustar categorias manualmente
 ```
 
@@ -122,8 +123,8 @@ Usuário define limite por categoria e mês
 - O valor de uma transação é sempre positivo.
 - Cada usuário pode ter apenas um orçamento por categoria por mês (constraint UNIQUE).
 - O seed de categorias padrão é criado automaticamente no registro: Alimentação, Transporte, Moradia, Lazer, Saúde, Educação, Salário, Outros.
-- No MVP, apenas faturas do Nubank são suportadas pelo parser.
-- PDFs de faturas são armazenados no filesystem local (`./uploads/{userId}/`), não no banco de dados.
+- No MVP, o upload de faturas PDF ja esta disponivel; o parser sera implementado em etapa futura, inicialmente para Nubank.
+- PDFs de faturas são armazenados no filesystem local (`{app.uploads.dir}/{userId}/`), não no banco de dados.
 - JWT expira em 24 horas; não há refresh token no MVP.
 
 ---

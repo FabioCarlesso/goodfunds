@@ -55,10 +55,10 @@ public class Invoice {
     @Column(name = "status", nullable = false, length = 30)
     private StatusFatura status;
 
-    @Column(name = "mes_referencia", nullable = false, length = 7)
+    @Column(name = "mes_referencia", length = 7)
     private YearMonth mesReferencia;
 
-    @Column(name = "total_valor", nullable = false, precision = 19, scale = 2)
+    @Column(name = "total_valor", precision = 19, scale = 2)
     private BigDecimal totalValor;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

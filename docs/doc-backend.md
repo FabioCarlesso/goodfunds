@@ -111,8 +111,8 @@ Cada pacote possui um `package-info.java` documentando seu papel.
 | arquivo | String | Path relativo do PDF em `./uploads/{userId}/` |
 | origem | Enum | `NUBANK`, `ITAU`, `OUTROS` |
 | status | Enum | `PENDENTE_PARSE`, `PROCESSADA`, `ERRO` |
-| mesReferencia | YearMonth | Mês da fatura |
-| totalValor | BigDecimal | Valor total da fatura |
+| mesReferencia | YearMonth | Mês da fatura (nullable; preenchido pelo parser) |
+| totalValor | BigDecimal | Valor total da fatura (nullable; preenchido pelo parser) |
 | transactions | List\<Transaction\> | Lançamentos gerados pelo parser |
 | user | User | Dono da fatura |
 | createdAt | LocalDateTime | Auditoria |
@@ -169,9 +169,16 @@ Body de `POST/PUT`: `{ "nome": "Lazer", "tipo": "DESPESA" }`. `nome` obrigatóri
 
 | Método | Rota | Autenticação | Descrição |
 |---|---|---|---|
-| POST | `/invoices/upload` | JWT | Upload de fatura PDF (multipart) |
-| GET | `/invoices` | JWT | Lista faturas do usuário |
-| GET | `/invoices/{id}` | JWT | Detalhe da fatura + transações geradas |
+| POST | `/invoices/upload` | JWT | Upload de fatura PDF (multipart; 201 + `Location`) |
+
+`POST /invoices/upload` recebe `multipart/form-data` com:
+
+- `file` (obrigatório): arquivo PDF (`application/pdf`, com assinatura `%PDF`).
+- `origem` (opcional, default `NUBANK`): valores do enum `OrigemFatura` (`NUBANK`, `ITAU`, `OUTROS`).
+
+O arquivo é salvo em `{app.uploads.dir}/{userId}/{uuid}.pdf` e a `Invoice` é persistida com `status = PENDENTE_PARSE`. Os campos `mesReferencia` e `totalValor` ficam nulos até o parser processar a fatura. Se a persistência falhar ou a transação fizer rollback depois da gravação do PDF, o arquivo recém-salvo é removido. Limites controlados por `spring.servlet.multipart.max-file-size` (default 10MB) — excedeu retorna 413 `max-upload-size-exceeded`. Validações de arquivo retornam 400 `invalid-invoice-file`.
+
+Listagem e detalhe de faturas (`GET /invoices` e `GET /invoices/{id}`) ainda são endpoints planejados.
 
 ### Budgets
 
@@ -215,6 +222,7 @@ Body de `POST/PUT`: `{ "nome": "Lazer", "tipo": "DESPESA" }`. `nome` obrigatóri
 | `SPRING_DATASOURCE_USERNAME` | Usuário do banco |
 | `SPRING_DATASOURCE_PASSWORD` | Senha do banco |
 | `JWT_SECRET` | Segredo para assinar tokens JWT |
+| `APP_UPLOADS_DIR` | Diretório onde os PDFs de fatura são salvos (default `./uploads`) |
 
 ---
 
@@ -260,10 +268,10 @@ Body de `POST/PUT`: `{ "nome": "Lazer", "tipo": "DESPESA" }`. `nome` obrigatóri
 
 ## Parser de faturas PDF
 
-- Interface `InvoiceParser` define o contrato de parsing.
-- `NubankInvoiceParser` implementa o parse de faturas Nubank com Apache PDFBox 3.0.3.
-- Estratégia de seleção por `origem` da `Invoice` (padrão Strategy); arquitetura preparada para adicionar novos parsers.
-- PDFs salvos em `./uploads/{userId}/` no filesystem local.
+- O upload de PDFs já cria `Invoice` com `status = PENDENTE_PARSE`.
+- O parser das faturas será implementado em issue futura usando Apache PDFBox 3.0.3.
+- A seleção por `origem` (`NUBANK`, `ITAU`, `OUTROS`) prepara o modelo para adicionar parsers específicos.
+- PDFs salvos em `{app.uploads.dir}/{userId}/` no filesystem local.
 
 ---
 
