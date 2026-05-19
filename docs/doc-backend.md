@@ -268,9 +268,18 @@ Listagem e detalhe de faturas (`GET /invoices` e `GET /invoices/{id}`) ainda sã
 
 ## Parser de faturas PDF
 
-- O upload de PDFs já cria `Invoice` com `status = PENDENTE_PARSE`.
-- O parser das faturas será implementado em issue futura usando Apache PDFBox 3.0.3.
-- A seleção por `origem` (`NUBANK`, `ITAU`, `OUTROS`) prepara o modelo para adicionar parsers específicos.
+- O upload de PDFs cria `Invoice` com `status = PENDENTE_PARSE` (campos `mesReferencia` e `totalValor` nulos até o parser rodar).
+- Parsers vivem em `com.goodfunds.invoice.parser`:
+  - Interface `InvoiceParser` com `OrigemFatura origem()` e `ParsedInvoice parse(File pdf)`.
+  - DTOs imutáveis `ParsedInvoice` (`mesReferencia`, `total`, `transacoes`) e `ParsedInvoiceTransaction` (`data`, `descricao`, `valor`).
+  - `InvoiceParseException` para erros de leitura/extração.
+  - `InvoiceParserFactory` (Spring `@Component`) recebe todos os `InvoiceParser` via injeção e expõe `forInvoice(Invoice)` / `forOrigem(OrigemFatura)`. Garante que cada origem tenha no máximo uma implementação registrada.
+- `NubankInvoiceParser` (MVP): usa Apache PDFBox 3.0.3 (`Loader.loadPDF` + `PDFTextStripper`) e extrai do texto:
+  - **Mês de referência:** linha `Mês de referência: <MES> de <ANO>` (mês em PT-BR, três letras: `JAN`...`DEZ`).
+  - **Total:** linha `Valor total: R$ <valor>` ou `Total da fatura: R$ <valor>`.
+  - **Lançamentos:** linhas `DD MMM Descrição R$ <valor>`. A data é montada com o ano da fatura; meses posteriores ao mês de referência são interpretados como ano anterior (transações anteriores à data de fechamento).
+- A seleção por `origem` (`NUBANK`, `ITAU`, `OUTROS`) deixa o modelo pronto para novos parsers — basta criar mais uma implementação `InvoiceParser` anotada com `@Component`.
+- Fixture de teste: `src/test/resources/invoices/nubank/sample-fatura.pdf`, gerada deterministicamente por `NubankInvoiceFixtures` (regenerável via `java ... com.goodfunds.invoice.parser.NubankInvoiceFixtures`).
 - PDFs salvos em `{app.uploads.dir}/{userId}/` no filesystem local.
 
 ---
