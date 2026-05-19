@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -63,6 +64,109 @@ class NubankInvoiceParserTest {
         assertThatThrownBy(() -> parser.parse(notPdf.toFile()))
                 .isInstanceOf(InvoiceParseException.class)
                 .hasMessageContaining("Falha ao ler PDF");
+    }
+
+    @Test
+    void parse_failsWhenPdfIsNull() {
+        assertThatThrownBy(() -> parser.parse(null))
+                .isInstanceOf(InvoiceParseException.class)
+                .hasMessageContaining("obrigatorio");
+    }
+
+    @Test
+    void parse_inaccessibleFileMessageDoesNotLeakPath(@TempDir Path tempDir) {
+        File missing = tempDir.resolve("subdir/secret-token.pdf").toFile();
+
+        assertThatThrownBy(() -> parser.parse(missing))
+                .isInstanceOf(InvoiceParseException.class)
+                .hasMessageContaining("secret-token.pdf")
+                .hasMessageNotContaining(tempDir.toString());
+    }
+
+    @Test
+    void parseText_failsWhenNoTransactions() {
+        String text = String.join("\n",
+                "Mes de referencia: JUN de 2025",
+                "Valor total: R$ 1.234,56",
+                "(sem lancamentos no formato esperado)");
+
+        assertThatThrownBy(() -> parser.parseText(text))
+                .isInstanceOf(InvoiceParseException.class)
+                .hasMessageContaining("Nenhum lancamento");
+    }
+
+    @Test
+    void parseText_failsWhenDayIsInvalid() {
+        String text = String.join("\n",
+                "Mes de referencia: FEV de 2025",
+                "Valor total: R$ 100,00",
+                "31 FEV TRANSACAO INVALIDA R$ 10,00");
+
+        assertThatThrownBy(() -> parser.parseText(text))
+                .isInstanceOf(InvoiceParseException.class)
+                .hasMessageContaining("Data invalida");
+    }
+
+    @Test
+    void parseText_handlesDescriptionContainingRDollar() {
+        String text = String.join("\n",
+                "Mes de referencia: JUN de 2025",
+                "Valor total: R$ 100,00",
+                "10 JUN COMPRA R$ EATS DELIVERY R$ 42,50");
+
+        ParsedInvoice parsed = parser.parseText(text);
+
+        assertThat(parsed.transacoes()).singleElement()
+                .satisfies(t -> {
+                    assertThat(t.data()).isEqualTo(LocalDate.of(2025, 6, 10));
+                    assertThat(t.descricao()).isEqualTo("COMPRA R$ EATS DELIVERY");
+                    assertThat(t.valor()).isEqualByComparingTo(new BigDecimal("42.50"));
+                });
+    }
+
+    @Test
+    void parseText_handlesNegativeTotal() {
+        String text = String.join("\n",
+                "Mes de referencia: JUN de 2025",
+                "Valor total: R$ -50,00",
+                "05 JUN ESTORNO R$ -50,00");
+
+        ParsedInvoice parsed = parser.parseText(text);
+
+        assertThat(parsed.total()).isEqualByComparingTo(new BigDecimal("-50.00"));
+        assertThat(parsed.transacoes()).singleElement()
+                .extracting(ParsedInvoiceTransaction::valor)
+                .isEqualTo(new BigDecimal("-50.00"));
+    }
+
+    @Test
+    void parseText_recuaTransacoesPosterioresParaAnoAnterior() {
+        String text = String.join("\n",
+                "Mes de referencia: JAN de 2025",
+                "Valor total: R$ 300,00",
+                "20 DEZ COMPRA DEZEMBRO R$ 200,00",
+                "05 JAN COMPRA JANEIRO R$ 100,00");
+
+        ParsedInvoice parsed = parser.parseText(text);
+
+        assertThat(parsed.transacoes())
+                .extracting(ParsedInvoiceTransaction::data)
+                .containsExactly(LocalDate.of(2024, 12, 20), LocalDate.of(2025, 1, 5));
+    }
+
+    @Test
+    void parseText_endToEndAgainstPdfGeneratedFromLines(@TempDir Path tempDir) throws IOException {
+        Path pdf = tempDir.resolve("custom.pdf");
+        NubankInvoiceFixtures.writePdf(pdf, List.of(
+                "Mes de referencia: MAR de 2025",
+                "Valor total: R$ 10,00",
+                "01 MAR ITEM UNICO R$ 10,00"
+        ));
+
+        ParsedInvoice parsed = parser.parse(pdf.toFile());
+
+        assertThat(parsed.mesReferencia()).isEqualTo(YearMonth.of(2025, 3));
+        assertThat(parsed.transacoes()).hasSize(1);
     }
 
     private File copyFixtureTo(Path target) throws IOException {

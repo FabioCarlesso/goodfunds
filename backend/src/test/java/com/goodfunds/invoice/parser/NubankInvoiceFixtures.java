@@ -42,7 +42,14 @@ public final class NubankInvoiceFixtures {
     }
 
     public static void writeSamplePdf(Path target) throws IOException {
-        Files.createDirectories(target.getParent());
+        writePdf(target, SAMPLE_LINES);
+    }
+
+    public static void writePdf(Path target, List<String> lines) throws IOException {
+        Path parent = target.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
         try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage();
             document.addPage(page);
@@ -53,7 +60,7 @@ public final class NubankInvoiceFixtures {
                 content.newLineAtOffset(50, 750);
                 content.setLeading(16f);
                 boolean first = true;
-                for (String line : SAMPLE_LINES) {
+                for (String line : lines) {
                     if (first) {
                         content.showText(line);
                         first = false;

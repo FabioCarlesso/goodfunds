@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.Normalizer;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -42,11 +43,11 @@ public class NubankInvoiceParser implements InvoiceParser {
     );
 
     private static final Pattern TOTAL_FATURA = Pattern.compile(
-            "(?im)(?:valor\\s+total|total\\s+da\\s+fatura)\\s*[:\\-]?\\s*R\\$\\s*([\\d.]+,\\d{2})"
+            "(?im)(?:valor\\s+total|total\\s+da\\s+fatura)\\s*[:\\-]?\\s*R\\$\\s*(-?[\\d.]+,\\d{2})"
     );
 
     private static final Pattern LANCAMENTO = Pattern.compile(
-            "^(\\d{1,2})\\s+([A-Z]{3,})\\s+(.+?)\\s+R\\$\\s*(-?[\\d.]+,\\d{2})\\s*$"
+            "^(\\d{1,2})\\s+([A-Z]{3,})\\s+(.+)\\s+R\\$\\s*(-?[\\d.]+,\\d{2})\\s*$"
     );
 
     @Override
@@ -60,7 +61,7 @@ public class NubankInvoiceParser implements InvoiceParser {
             throw new InvoiceParseException("Arquivo da fatura e obrigatorio");
         }
         if (!pdf.isFile() || !pdf.canRead()) {
-            throw new InvoiceParseException("Arquivo da fatura inacessivel: " + pdf);
+            throw new InvoiceParseException("Arquivo da fatura inacessivel: " + pdf.getName());
         }
 
         String text;
@@ -72,9 +73,16 @@ public class NubankInvoiceParser implements InvoiceParser {
             throw new InvoiceParseException("Falha ao ler PDF da fatura Nubank: " + pdf.getName(), ex);
         }
 
+        return parseText(text);
+    }
+
+    ParsedInvoice parseText(String text) {
         YearMonth mesReferencia = extractMesReferencia(text);
         BigDecimal total = extractTotal(text);
         List<ParsedInvoiceTransaction> transacoes = extractTransacoes(text, mesReferencia);
+        if (transacoes.isEmpty()) {
+            throw new InvoiceParseException("Nenhum lancamento encontrado na fatura Nubank");
+        }
         return new ParsedInvoice(mesReferencia, total, transacoes);
     }
 
@@ -126,9 +134,6 @@ public class NubankInvoiceParser implements InvoiceParser {
     }
 
     private Integer resolveMonth(String token) {
-        if (token.length() < 3) {
-            return null;
-        }
         return MESES_PT.get(token.substring(0, 3));
     }
 
@@ -137,7 +142,12 @@ public class NubankInvoiceParser implements InvoiceParser {
         if (month > mesReferencia.getMonthValue()) {
             year -= 1;
         }
-        return LocalDate.of(year, month, day);
+        try {
+            return LocalDate.of(year, month, day);
+        } catch (DateTimeException ex) {
+            throw new InvoiceParseException(
+                    "Data invalida na fatura Nubank: " + day + "/" + month + "/" + year, ex);
+        }
     }
 
     private BigDecimal parseValor(String raw) {
