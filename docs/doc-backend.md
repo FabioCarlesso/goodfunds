@@ -282,6 +282,14 @@ Listagem e detalhe de faturas (`GET /invoices` e `GET /invoices/{id}`) ainda sã
 - Fixture de teste: `src/test/resources/invoices/nubank/sample-fatura.pdf`, gerada deterministicamente por `NubankInvoiceFixtures` (regenerável via `java ... com.goodfunds.invoice.parser.NubankInvoiceFixtures`).
 - PDFs salvos em `{app.uploads.dir}/{userId}/` no filesystem local.
 
+### Geração de transações a partir da fatura (issue #16)
+
+- `InvoiceProcessingService.process(invoiceId)` orquestra o pós-upload: localiza o PDF em `{app.uploads.dir}/{arquivo}`, escolhe o parser via `InvoiceParserFactory.forInvoice(...)` e converte cada `ParsedInvoiceTransaction` em uma `Transaction`.
+- Cada `Transaction` gerada recebe `invoice = <id da fatura>`, `formaPagamento = CARTAO_CREDITO`, `user` do dono da fatura e categoria padrão `Outros` (categoria semeada por usuário no registro; resolvida por `CategoryRepository.findFirstByUserIdAndNomeIgnoreCase`). A categoria padrão será substituída por sugestão automática numa issue futura.
+- Em caso de sucesso, a fatura recebe `mesReferencia`/`totalValor` extraídos e `status = PROCESSADA`. Falhas de parse/persistência são logadas e marcam `status = ERRO` (sem propagar rollback), permitindo nova tentativa.
+- **Idempotência:** faturas já `PROCESSADA` retornam sem reprocessar; um reprocessamento explícito remove os lançamentos anteriores da fatura (`deleteByInvoiceId`) antes de recriar, garantindo que `process` não duplique transações.
+- Fatura inexistente resulta em `InvoiceNotFoundException` (404 `invoice-not-found`).
+
 ---
 
 ## Documentação de API
