@@ -282,6 +282,15 @@ Listagem e detalhe de faturas (`GET /invoices` e `GET /invoices/{id}`) ainda sã
 - Fixture de teste: `src/test/resources/invoices/nubank/sample-fatura.pdf`, gerada deterministicamente por `NubankInvoiceFixtures` (regenerável via `java ... com.goodfunds.invoice.parser.NubankInvoiceFixtures`).
 - PDFs salvos em `{app.uploads.dir}/{userId}/` no filesystem local.
 
+### Geração de transações a partir da fatura (issue #16)
+
+- `InvoiceProcessingService.process(userId, invoiceId)` orquestra o pós-upload, **escopado pelo usuário autenticado**: valida que a fatura pertence ao `userId` (caso contrário `InvoiceNotFoundException`, sem vazar a existência de faturas de outros usuários), localiza o PDF em `{app.uploads.dir}/{arquivo}` (validando que o caminho resolvido permanece dentro do diretório base), escolhe o parser via `InvoiceParserFactory.forInvoice(...)` e converte cada `ParsedInvoiceTransaction` em uma `Transaction`.
+- Cada `Transaction` gerada recebe `invoice = <id da fatura>`, `formaPagamento = CARTAO_CREDITO`, `user` do dono da fatura e categoria padrão `Outros` (categoria semeada por usuário no registro; resolvida de forma determinística por `CategoryRepository.findFirstByUserIdAndNomeIgnoreCaseOrderByIdAsc`). A categoria padrão será substituída por sugestão automática numa issue futura.
+- Antes de persistir, os lançamentos extraídos são validados: `valor > 0` e `descricao` não vazia com no máximo 500 caracteres (alinhado com `@Positive`/`CHECK (valor > 0)` e `VARCHAR(500)`). Lançamentos inválidos — por exemplo linhas de crédito/estorno com valor negativo — fazem o processamento falhar de forma controlada (`status = ERRO`) em vez de estourar uma constraint no commit.
+- Em caso de sucesso, a fatura recebe `mesReferencia`/`totalValor` extraídos e `status = PROCESSADA`. Falhas de parse, de validação dos lançamentos ou de resolução da categoria padrão são logadas e marcam `status = ERRO` (sem propagar rollback), permitindo nova tentativa.
+- **Idempotência:** faturas já `PROCESSADA` retornam sem reprocessar; um reprocessamento explícito remove os lançamentos anteriores da fatura (bulk delete `@Modifying`) antes de recriar, garantindo que `process` não duplique transações.
+- Fatura inexistente (ou de outro usuário) resulta em `InvoiceNotFoundException` (404 `invoice-not-found`).
+
 ---
 
 ## Documentação de API
