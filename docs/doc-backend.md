@@ -150,6 +150,7 @@ Cada pacote possui um `package-info.java` documentando seu papel.
 | GET | `/transactions` | JWT | Lista paginada com filtros |
 | POST | `/transactions` | JWT | Cria transação manual |
 | PUT | `/transactions/{id}` | JWT | Atualiza transação |
+| PATCH | `/transactions/{id}/category` | JWT | Recategoriza transação (`{ categoryId }`) |
 | DELETE | `/transactions/{id}` | JWT | Remove transação |
 
 Filtros disponíveis em `GET /transactions`: `?ref=YYYY-MM`, `categoryId`, `tipo`, `from`, `to`, `page`, `size`, `sort`.

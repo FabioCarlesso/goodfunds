@@ -36,6 +36,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -412,6 +413,134 @@ class TransactionControllerIntegrationTest {
 
         Transaction reloaded = transactionRepository.findById(tx.getId()).orElseThrow();
         assertThat(reloaded.getDescricao()).isEqualTo("Alheia");
+    }
+
+    @Test
+    void updateCategory_reassignsCategoryAndRefreshesUpdatedAt() throws Exception {
+        Transaction tx = persistTransaction(owner, alimentacao, "Mercado", "100.00",
+                LocalDate.of(2026, 5, 1), FormaPagamento.PIX);
+        OffsetDateTime initialUpdatedAt = tx.getUpdatedAt();
+        // Garante uma diferenca de tempo perceptivel entre criacao e recategorizacao.
+        Thread.sleep(5);
+
+        String payload = """
+                {
+                  "categoryId": "%s"
+                }
+                """.formatted(lazer.getId());
+
+        MvcResult result = mockMvc.perform(patch("/transactions/" + tx.getId() + "/category")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.categoryId").value(lazer.getId().toString()))
+                .andExpect(jsonPath("$.categoryNome").value("Lazer"))
+                // Demais campos da transacao permanecem inalterados.
+                .andExpect(jsonPath("$.descricao").value("Mercado"))
+                .andExpect(jsonPath("$.valor").value(100.00))
+                .andExpect(jsonPath("$.formaPagamento").value("PIX"))
+                .andReturn();
+
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+        OffsetDateTime responseUpdatedAt = OffsetDateTime.parse(body.get("updatedAt").asText());
+        assertThat(responseUpdatedAt).isAfterOrEqualTo(initialUpdatedAt);
+
+        Transaction reloaded = transactionRepository.findById(tx.getId()).orElseThrow();
+        assertThat(reloaded.getCategory().getId()).isEqualTo(lazer.getId());
+        assertThat(reloaded.getUpdatedAt()).isEqualTo(responseUpdatedAt);
+    }
+
+    @Test
+    void updateCategory_withMissingCategoryId_returns400() throws Exception {
+        Transaction tx = persistTransaction(owner, alimentacao, "Mercado", "100.00",
+                LocalDate.of(2026, 5, 1), FormaPagamento.PIX);
+
+        mockMvc.perform(patch("/transactions/" + tx.getId() + "/category")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryId\": null}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:validation-error"))
+                .andExpect(jsonPath("$.errors.categoryId").exists());
+    }
+
+    @Test
+    void updateCategory_withCategoryFromAnotherUser_returns404() throws Exception {
+        Transaction tx = persistTransaction(owner, alimentacao, "Mercado", "100.00",
+                LocalDate.of(2026, 5, 1), FormaPagamento.PIX);
+
+        String payload = """
+                {
+                  "categoryId": "%s"
+                }
+                """.formatted(otherUserCategory.getId());
+
+        mockMvc.perform(patch("/transactions/" + tx.getId() + "/category")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:category-not-found"));
+
+        Transaction reloaded = transactionRepository.findById(tx.getId()).orElseThrow();
+        assertThat(reloaded.getCategory().getId()).isEqualTo(alimentacao.getId());
+    }
+
+    @Test
+    void updateCategory_withNonExistentTransaction_returns404() throws Exception {
+        String payload = """
+                {
+                  "categoryId": "%s"
+                }
+                """.formatted(alimentacao.getId());
+
+        mockMvc.perform(patch("/transactions/" + UUID.randomUUID() + "/category")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:transaction-not-found"));
+    }
+
+    @Test
+    void updateCategory_transactionFromAnotherUser_returns404() throws Exception {
+        Transaction tx = persistTransaction(other, otherUserCategory, "Alheia", "10.00",
+                LocalDate.of(2026, 5, 1), FormaPagamento.PIX);
+
+        String payload = """
+                {
+                  "categoryId": "%s"
+                }
+                """.formatted(alimentacao.getId());
+
+        mockMvc.perform(patch("/transactions/" + tx.getId() + "/category")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:transaction-not-found"));
+
+        Transaction reloaded = transactionRepository.findById(tx.getId()).orElseThrow();
+        assertThat(reloaded.getCategory().getId()).isEqualTo(otherUserCategory.getId());
+    }
+
+    @Test
+    void updateCategory_withoutToken_returns401() throws Exception {
+        Transaction tx = persistTransaction(owner, alimentacao, "x", "10.00",
+                LocalDate.of(2026, 5, 1), FormaPagamento.PIX);
+
+        String payload = """
+                {
+                  "categoryId": "%s"
+                }
+                """.formatted(lazer.getId());
+
+        mockMvc.perform(patch("/transactions/" + tx.getId() + "/category")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
