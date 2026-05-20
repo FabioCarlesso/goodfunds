@@ -82,7 +82,7 @@ class InvoiceProcessingServiceIntegrationTest {
     void process_generatesTransactionsAndMarksProcessada() throws IOException {
         Invoice invoice = persistInvoiceWithSamplePdf();
 
-        InvoiceResponse response = processingService.process(invoice.getId());
+        InvoiceResponse response = processingService.process(owner.getId(), invoice.getId());
 
         assertThat(response.status()).isEqualTo(StatusFatura.PROCESSADA);
         assertThat(response.mesReferencia()).isEqualTo(YearMonth.of(2025, 6));
@@ -108,8 +108,8 @@ class InvoiceProcessingServiceIntegrationTest {
     void process_calledTwice_isIdempotent() throws IOException {
         Invoice invoice = persistInvoiceWithSamplePdf();
 
-        processingService.process(invoice.getId());
-        InvoiceResponse second = processingService.process(invoice.getId());
+        processingService.process(owner.getId(), invoice.getId());
+        InvoiceResponse second = processingService.process(owner.getId(), invoice.getId());
 
         assertThat(second.status()).isEqualTo(StatusFatura.PROCESSADA);
         assertThat(transactionRepository.findByInvoiceId(invoice.getId())).hasSize(5);
@@ -119,14 +119,14 @@ class InvoiceProcessingServiceIntegrationTest {
     void process_forcedReprocess_replacesTransactionsWithoutDuplicating() throws IOException {
         Invoice invoice = persistInvoiceWithSamplePdf();
 
-        processingService.process(invoice.getId());
+        processingService.process(owner.getId(), invoice.getId());
 
         // Simula um reprocessamento explicito (status reaberto) e garante que nao duplica.
         Invoice reopened = invoiceRepository.findById(invoice.getId()).orElseThrow();
         reopened.setStatus(StatusFatura.PENDENTE_PARSE);
         invoiceRepository.saveAndFlush(reopened);
 
-        processingService.process(invoice.getId());
+        processingService.process(owner.getId(), invoice.getId());
 
         assertThat(transactionRepository.findByInvoiceId(invoice.getId())).hasSize(5);
     }
@@ -135,7 +135,7 @@ class InvoiceProcessingServiceIntegrationTest {
     void process_whenPdfIsUnparseable_marksErroAndCreatesNoTransactions() throws IOException {
         Invoice invoice = persistInvoice("%PDF-1.4 conteudo invalido".getBytes());
 
-        InvoiceResponse response = processingService.process(invoice.getId());
+        InvoiceResponse response = processingService.process(owner.getId(), invoice.getId());
 
         assertThat(response.status()).isEqualTo(StatusFatura.ERRO);
         assertThat(invoiceRepository.findById(invoice.getId()).orElseThrow().getStatus())
@@ -147,8 +147,25 @@ class InvoiceProcessingServiceIntegrationTest {
     void process_whenInvoiceMissing_throwsNotFound() {
         UUID missing = UUID.randomUUID();
 
-        assertThatThrownBy(() -> processingService.process(missing))
+        assertThatThrownBy(() -> processingService.process(owner.getId(), missing))
                 .isInstanceOf(InvoiceNotFoundException.class);
+    }
+
+    @Test
+    void process_whenInvoiceBelongsToAnotherUser_throwsNotFoundAndDoesNotProcess() throws IOException {
+        Invoice invoice = persistInvoiceWithSamplePdf();
+        User other = userRepository.save(User.builder()
+                .nome("Other")
+                .email("other@example.com")
+                .senha("hash")
+                .build());
+
+        assertThatThrownBy(() -> processingService.process(other.getId(), invoice.getId()))
+                .isInstanceOf(InvoiceNotFoundException.class);
+
+        assertThat(transactionRepository.findByInvoiceId(invoice.getId())).isEmpty();
+        assertThat(invoiceRepository.findById(invoice.getId()).orElseThrow().getStatus())
+                .isEqualTo(StatusFatura.PENDENTE_PARSE);
     }
 
     private Invoice persistInvoiceWithSamplePdf() throws IOException {

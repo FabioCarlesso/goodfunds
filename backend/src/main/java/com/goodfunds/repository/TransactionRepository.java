@@ -7,6 +7,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,7 +24,9 @@ public interface TransactionRepository
 
     List<Transaction> findByInvoiceId(UUID invoiceId);
 
-    long deleteByInvoiceId(UUID invoiceId);
+    @Modifying
+    @Query("delete from Transaction t where t.invoice.id = :invoiceId")
+    int deleteByInvoiceId(@Param("invoiceId") UUID invoiceId);
 
     @Override
     @EntityGraph(attributePaths = {"category", "invoice"})

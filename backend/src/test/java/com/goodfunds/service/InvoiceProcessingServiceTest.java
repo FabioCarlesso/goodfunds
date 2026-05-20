@@ -93,11 +93,11 @@ class InvoiceProcessingServiceTest {
                         new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 1), "MERCADO", new BigDecimal("89.90")),
                         new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 5), "UBER", new BigDecimal("35.40"))));
         stubParsing(parsed);
-        when(categoryRepository.findFirstByUserIdAndNomeIgnoreCase(owner.getId(), "Outros"))
+        when(categoryRepository.findFirstByUserIdAndNomeIgnoreCaseOrderByIdAsc(owner.getId(), "Outros"))
                 .thenReturn(Optional.of(outros));
         when(invoiceRepository.save(any(Invoice.class))).thenAnswer(call -> call.getArgument(0));
 
-        InvoiceResponse response = service.process(invoice.getId());
+        InvoiceResponse response = service.process(owner.getId(), invoice.getId());
 
         assertThat(response.status()).isEqualTo(StatusFatura.PROCESSADA);
         assertThat(response.mesReferencia()).isEqualTo(YearMonth.of(2025, 6));
@@ -125,11 +125,11 @@ class InvoiceProcessingServiceTest {
                 new BigDecimal("89.90"),
                 List.of(new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 1), "MERCADO", new BigDecimal("89.90"))));
         stubParsing(parsed);
-        when(categoryRepository.findFirstByUserIdAndNomeIgnoreCase(owner.getId(), "Outros"))
+        when(categoryRepository.findFirstByUserIdAndNomeIgnoreCaseOrderByIdAsc(owner.getId(), "Outros"))
                 .thenReturn(Optional.of(outros));
         when(invoiceRepository.save(any(Invoice.class))).thenAnswer(call -> call.getArgument(0));
 
-        service.process(invoice.getId());
+        service.process(owner.getId(), invoice.getId());
 
         verify(transactionRepository).deleteByInvoiceId(invoice.getId());
     }
@@ -139,7 +139,7 @@ class InvoiceProcessingServiceTest {
         invoice.setStatus(StatusFatura.PROCESSADA);
         when(invoiceRepository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
 
-        InvoiceResponse response = service.process(invoice.getId());
+        InvoiceResponse response = service.process(owner.getId(), invoice.getId());
 
         assertThat(response.status()).isEqualTo(StatusFatura.PROCESSADA);
         verify(parserFactory, never()).forInvoice(any());
@@ -155,7 +155,7 @@ class InvoiceProcessingServiceTest {
         when(parser.parse(any(File.class))).thenThrow(new InvoiceParseException("fatura ilegivel"));
         when(invoiceRepository.save(any(Invoice.class))).thenAnswer(call -> call.getArgument(0));
 
-        InvoiceResponse response = service.process(invoice.getId());
+        InvoiceResponse response = service.process(owner.getId(), invoice.getId());
 
         assertThat(response.status()).isEqualTo(StatusFatura.ERRO);
         assertThat(invoice.getStatus()).isEqualTo(StatusFatura.ERRO);
@@ -170,11 +170,11 @@ class InvoiceProcessingServiceTest {
                 new BigDecimal("89.90"),
                 List.of(new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 1), "MERCADO", new BigDecimal("89.90"))));
         stubParsing(parsed);
-        when(categoryRepository.findFirstByUserIdAndNomeIgnoreCase(owner.getId(), "Outros"))
+        when(categoryRepository.findFirstByUserIdAndNomeIgnoreCaseOrderByIdAsc(owner.getId(), "Outros"))
                 .thenReturn(Optional.empty());
         when(invoiceRepository.save(any(Invoice.class))).thenAnswer(call -> call.getArgument(0));
 
-        InvoiceResponse response = service.process(invoice.getId());
+        InvoiceResponse response = service.process(owner.getId(), invoice.getId());
 
         assertThat(response.status()).isEqualTo(StatusFatura.ERRO);
         verify(transactionRepository, never()).saveAll(any());
@@ -185,8 +185,39 @@ class InvoiceProcessingServiceTest {
         UUID missing = UUID.randomUUID();
         when(invoiceRepository.findById(missing)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.process(missing))
+        assertThatThrownBy(() -> service.process(owner.getId(), missing))
                 .isInstanceOf(InvoiceNotFoundException.class);
+    }
+
+    @Test
+    void process_whenInvoiceBelongsToAnotherUser_throwsNotFound() {
+        when(invoiceRepository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        UUID anotherUser = UUID.randomUUID();
+
+        assertThatThrownBy(() -> service.process(anotherUser, invoice.getId()))
+                .isInstanceOf(InvoiceNotFoundException.class);
+
+        verify(parserFactory, never()).forInvoice(any());
+        verify(transactionRepository, never()).deleteByInvoiceId(any());
+        verify(transactionRepository, never()).saveAll(any());
+        verify(invoiceRepository, never()).save(any());
+    }
+
+    @Test
+    void process_whenLineItemValueNotPositive_marksErroWithoutPersisting() {
+        ParsedInvoice parsed = new ParsedInvoice(
+                YearMonth.of(2025, 6),
+                new BigDecimal("89.90"),
+                List.of(new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 1), "ESTORNO", new BigDecimal("-50.00"))));
+        stubParsing(parsed);
+        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(call -> call.getArgument(0));
+
+        InvoiceResponse response = service.process(owner.getId(), invoice.getId());
+
+        assertThat(response.status()).isEqualTo(StatusFatura.ERRO);
+        assertThat(invoice.getStatus()).isEqualTo(StatusFatura.ERRO);
+        verify(transactionRepository, never()).deleteByInvoiceId(any());
+        verify(transactionRepository, never()).saveAll(any());
     }
 
     private void stubParsing(ParsedInvoice parsed) {

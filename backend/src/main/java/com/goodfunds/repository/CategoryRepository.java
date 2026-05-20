@@ -23,5 +23,5 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
 
     Optional<Category> findByIdAndUserId(UUID id, UUID userId);
 
-    Optional<Category> findFirstByUserIdAndNomeIgnoreCase(UUID userId, String nome);
+    Optional<Category> findFirstByUserIdAndNomeIgnoreCaseOrderByIdAsc(UUID userId, String nome);
 }
