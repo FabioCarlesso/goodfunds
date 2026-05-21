@@ -82,4 +82,40 @@ class CategorySuggestionServiceTest {
         // Description contains keywords from two rules; first rule in list wins.
         assertThat(service.suggest("UBER MERCADO")).contains("Alimentacao");
     }
+
+    @Test
+    void suggest_matchesWholeTokenNotSubstring() {
+        // "posto" must not match inside "COMPOSTO"; "99" must not match inside "1999".
+        assertThat(service.suggest("COMPOSTO QUIMICO")).isEmpty();
+        assertThat(service.suggest("LOJA 1999")).isEmpty();
+        // Standalone tokens still match.
+        assertThat(service.suggest("POSTO SHELL")).contains("Transporte");
+        assertThat(service.suggest("PEDIDO 99 ENTREGA")).contains("Transporte");
+    }
+
+    @Test
+    void suggest_blankKeywordDoesNotMatchEverything() {
+        CategoryRulesProperties props = new CategoryRulesProperties();
+        CategoryRulesProperties.Rule rule = new CategoryRulesProperties.Rule();
+        rule.setKeywords(List.of("", "netflix"));
+        rule.setCategory("Lazer");
+        props.setRules(List.of(rule));
+        CategorySuggestionService localService = new CategorySuggestionService(props);
+
+        assertThat(localService.suggest("QUALQUER COISA")).isEmpty();
+        assertThat(localService.suggest("NETFLIX MENSAL")).contains("Lazer");
+    }
+
+    @Test
+    void suggest_keywordCaseInConfigIsNormalized() {
+        CategoryRulesProperties props = new CategoryRulesProperties();
+        CategoryRulesProperties.Rule rule = new CategoryRulesProperties.Rule();
+        rule.setKeywords(List.of("Netflix", "SPOTIFY"));
+        rule.setCategory("Lazer");
+        props.setRules(List.of(rule));
+        CategorySuggestionService localService = new CategorySuggestionService(props);
+
+        assertThat(localService.suggest("netflix premium")).contains("Lazer");
+        assertThat(localService.suggest("spotify familia")).contains("Lazer");
+    }
 }

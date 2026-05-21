@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -143,7 +144,11 @@ public class InvoiceProcessingService {
     }
 
     private Map<String, Category> buildCategoryMap(UUID userId) {
+        // Ordena por id antes de deduplicar para que, havendo categorias com o mesmo nome
+        // (case-insensitive), o vencedor seja deterministico (menor id) — mantendo a
+        // garantia anterior do resolveDefaultCategory via `...OrderByIdAsc`.
         return categoryRepository.findByUserId(userId).stream()
+                .sorted(Comparator.comparing(Category::getId))
                 .collect(Collectors.toMap(
                         c -> c.getNome().toLowerCase(Locale.ROOT),
                         c -> c,

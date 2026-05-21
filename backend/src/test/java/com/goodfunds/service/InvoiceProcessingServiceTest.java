@@ -147,6 +147,34 @@ class InvoiceProcessingServiceTest {
     }
 
     @Test
+    void process_whenSeededCategoryCaseDiffersFromSuggestion_stillMatches() {
+        Category transporte = Category.builder()
+                .id(UUID.randomUUID())
+                .nome("TRANSPORTE") // caixa diferente da sugestao "Transporte"
+                .tipo(TipoCategoria.DESPESA)
+                .user(owner)
+                .build();
+        ParsedInvoice parsed = new ParsedInvoice(
+                YearMonth.of(2025, 6),
+                new BigDecimal("35.40"),
+                List.of(new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 5), "UBER TRIP", new BigDecimal("35.40"))));
+
+        when(invoiceRepository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(parserFactory.forInvoice(invoice)).thenReturn(parser);
+        lenient().when(parser.parse(any(File.class))).thenReturn(parsed);
+        when(categoryRepository.findByUserId(owner.getId())).thenReturn(List.of(outros, transporte));
+        when(categorySuggestionService.suggest("UBER TRIP")).thenReturn(Optional.of("Transporte"));
+        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(call -> call.getArgument(0));
+
+        service.process(owner.getId(), invoice.getId());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Transaction>> captor = ArgumentCaptor.forClass(List.class);
+        verify(transactionRepository).saveAll(captor.capture());
+        assertThat(captor.getValue().get(0).getCategory()).isEqualTo(transporte);
+    }
+
+    @Test
     void process_whenSuggestedCategoryNotInUserList_fallsBackToDefault() {
         ParsedInvoice parsed = new ParsedInvoice(
                 YearMonth.of(2025, 6),
