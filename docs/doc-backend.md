@@ -189,7 +189,7 @@ Listagem e detalhe de faturas (`GET /invoices` e `GET /invoices/{id}`) ainda sã
 | POST | `/budgets` | JWT | Cria orçamento mensal (201 + `Location`) |
 | PUT | `/budgets/{id}` | JWT | Atualiza orçamento (200) |
 
-Body de `POST/PUT`: `{ "limite": 500.00, "categoryId": "<uuid>", "mes": 5, "ano": 2026 }`. `limite` obrigatório e positivo (até 2 casas decimais); `categoryId` obrigatório; `mes` obrigatório (1–12); `ano` obrigatório (≥ 2000). O parâmetro `ref` em `GET /budgets` é obrigatório (`yyyy-MM`); se ausente retorna 400 `validation-error`. Orçamentos são escopados pelo usuário do JWT — `id` ou `categoryId` inexistentes ou de outro usuário retornam 404 (`budget-not-found` / `category-not-found`). A combinação `(usuário, categoria, mês, ano)` é única: tentar criar ou mover um orçamento para um período já ocupado retorna 409 `budget-already-exists`.
+Body de `POST/PUT`: `{ "limite": 500.00, "categoryId": "<uuid>", "mes": 5, "ano": 2026 }`. `limite` obrigatório e positivo (até 2 casas decimais); `categoryId` obrigatório; `mes` obrigatório (1–12); `ano` obrigatório (2000–2100). O parâmetro `ref` em `GET /budgets` é obrigatório (`yyyy-MM`); se ausente retorna 400 `validation-error` (`errors.ref`); se mal formatado (ex: `2026-13`) também retorna 400 `validation-error`. Orçamentos são escopados pelo usuário do JWT — `id` ou `categoryId` inexistentes ou de outro usuário retornam 404 (`budget-not-found` / `category-not-found`). A combinação `(usuário, categoria, mês, ano)` é única: tentar criar ou mover um orçamento para um período já ocupado retorna 409 `budget-already-exists`.
 
 ### Reports
 
@@ -248,7 +248,7 @@ Body de `POST/PUT`: `{ "limite": 500.00, "categoryId": "<uuid>", "mes": 5, "ano"
 - Falhas de autenticação retornam HTTP 401 em `application/problem+json`, inclusive quando bloqueadas pelo Spring Security antes de chegar ao controller.
 - Recursos não encontrados retornam HTTP 404.
 - E-mail já cadastrado retorna HTTP 409.
-- Orçamento duplicado para a mesma `(categoria, mês, ano)` retorna HTTP 409 `budget-already-exists` (verificação na camada de serviço, reforçada pela constraint UNIQUE no banco).
+- Orçamento duplicado para a mesma `(categoria, mês, ano)` retorna HTTP 409 `budget-already-exists` (verificação na camada de serviço; a constraint UNIQUE no banco atua como backstop e violações por concorrência também são mapeadas para 409 via handler de `DataIntegrityViolationException`).
 - Erros de regra de negócio específicos usam o status HTTP semântico correspondente (ex: 409 para e-mail duplicado); HTTP 422 não é utilizado.
 - Erros inesperados retornam HTTP 500.
 

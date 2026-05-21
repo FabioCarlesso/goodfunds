@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -207,6 +208,30 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "Orcamento ja existe",
                 ex.getMessage(),
                 "budget-already-exists",
+                instanceUri(request));
+    }
+
+    // Backstop para violacoes de unique constraint que escapem da verificacao na camada de
+    // servico (ex: race condition entre a checagem e o insert). A constraint do budget vira o
+    // mesmo 409 contratual; demais violacoes de integridade tambem viram 409 (conflito de
+    // estado) em vez de 500, sem expor detalhes internos do banco.
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex, HttpServletRequest request) {
+        String cause = ex.getMostSpecificCause().getMessage();
+        if (cause != null && cause.toLowerCase().contains("uq_budgets_user_category_mes_ano")) {
+            return createProblem(
+                    HttpStatus.CONFLICT,
+                    "Orcamento ja existe",
+                    "Ja existe um orcamento para a categoria no periodo informado",
+                    "budget-already-exists",
+                    instanceUri(request));
+        }
+        log.warn("Data integrity violation on {} {}", request.getMethod(), request.getRequestURI(), ex);
+        return createProblem(
+                HttpStatus.CONFLICT,
+                "Conflito de dados",
+                "A operacao viola uma restricao de integridade dos dados",
+                "data-integrity-violation",
                 instanceUri(request));
     }
 

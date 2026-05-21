@@ -201,6 +201,46 @@ class BudgetControllerIntegrationTest {
     }
 
     @Test
+    void create_withAnoOutOfRange_returns400() throws Exception {
+        String payload = """
+                {
+                  "limite": 500.00,
+                  "categoryId": "%s",
+                  "mes": 5,
+                  "ano": 999999
+                }
+                """.formatted(alimentacao.getId());
+
+        mockMvc.perform(post("/budgets")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:validation-error"))
+                .andExpect(jsonPath("$.errors.ano").exists());
+    }
+
+    @Test
+    void create_withNullCategoryId_returns400() throws Exception {
+        String payload = """
+                {
+                  "limite": 500.00,
+                  "categoryId": null,
+                  "mes": 5,
+                  "ano": 2026
+                }
+                """;
+
+        mockMvc.perform(post("/budgets")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:validation-error"))
+                .andExpect(jsonPath("$.errors.categoryId").exists());
+    }
+
+    @Test
     void create_withoutToken_returns401() throws Exception {
         String payload = """
                 {
@@ -236,6 +276,16 @@ class BudgetControllerIntegrationTest {
     @Test
     void list_withoutRef_returns400() throws Exception {
         mockMvc.perform(get("/budgets")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:validation-error"))
+                .andExpect(jsonPath("$.errors.ref").exists());
+    }
+
+    @Test
+    void list_withMalformedRef_returns400() throws Exception {
+        mockMvc.perform(get("/budgets")
+                        .param("ref", "2026-13")
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:validation-error"))
