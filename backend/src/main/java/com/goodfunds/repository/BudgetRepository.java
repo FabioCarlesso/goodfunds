@@ -13,7 +13,11 @@ public interface BudgetRepository extends JpaRepository<Budget, UUID> {
 
     List<Budget> findByUserIdAndAnoAndMes(UUID userId, Integer ano, Integer mes);
 
+    List<Budget> findByUserIdAndAnoAndMesOrderByCategoryNomeAsc(UUID userId, Integer ano, Integer mes);
+
     Page<Budget> findByUserIdAndAnoAndMes(UUID userId, Integer ano, Integer mes, Pageable pageable);
+
+    Optional<Budget> findByIdAndUserId(UUID id, UUID userId);
 
     Optional<Budget> findByUserIdAndCategoryIdAndAnoAndMes(UUID userId, UUID categoryId, Integer ano, Integer mes);
 

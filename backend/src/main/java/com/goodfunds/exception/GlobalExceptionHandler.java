@@ -200,6 +200,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 instanceUri(request));
     }
 
+    @ExceptionHandler(BudgetAlreadyExistsException.class)
+    public ProblemDetail handleBudgetAlreadyExists(BudgetAlreadyExistsException ex, HttpServletRequest request) {
+        return createProblem(
+                HttpStatus.CONFLICT,
+                "Orcamento ja existe",
+                ex.getMessage(),
+                "budget-already-exists",
+                instanceUri(request));
+    }
+
     @ExceptionHandler(InvalidTransactionFilterException.class)
     public ProblemDetail handleInvalidFilter(InvalidTransactionFilterException ex, HttpServletRequest request) {
         return createProblem(

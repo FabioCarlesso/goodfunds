@@ -4,7 +4,7 @@ Goodfunds e um sistema de controle financeiro pessoal para uso proprio. O MVP co
 
 ## Estado atual
 
-O repositorio esta na Sprint 1. O backend Spring Boot ja foi criado em `backend/`, com profiles `dev`, `test` e `prod`, migrations Flyway, autenticacao JWT, CRUDs de categorias/transacoes e upload autenticado de faturas PDF. O Docker Compose basico (app + postgres) ja esta disponivel (issue #11). O frontend ainda sera implementado.
+O repositorio esta na Sprint 1. O backend Spring Boot ja foi criado em `backend/`, com profiles `dev`, `test` e `prod`, migrations Flyway, autenticacao JWT, CRUDs de categorias/transacoes/orcamentos e upload autenticado de faturas PDF. O Docker Compose basico (app + postgres) ja esta disponivel (issue #11). O frontend ainda sera implementado.
 
 ## Estrutura
 
