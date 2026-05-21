@@ -1,6 +1,7 @@
 package com.goodfunds.controller;
 
 import com.goodfunds.domain.TipoCategoria;
+import com.goodfunds.dto.TransactionCategoryRequest;
 import com.goodfunds.dto.TransactionRequest;
 import com.goodfunds.dto.TransactionResponse;
 import com.goodfunds.security.AuthenticatedUser;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -68,6 +70,14 @@ public class TransactionController {
             @PathVariable UUID id,
             @Valid @RequestBody TransactionRequest request) {
         return ResponseEntity.ok(transactionService.update(principal.getUserId(), id, request));
+    }
+
+    @PatchMapping("/{id}/category")
+    public ResponseEntity<TransactionResponse> updateCategory(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @PathVariable UUID id,
+            @Valid @RequestBody TransactionCategoryRequest request) {
+        return ResponseEntity.ok(transactionService.updateCategory(principal.getUserId(), id, request));
     }
 
     @DeleteMapping("/{id}")

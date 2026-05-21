@@ -4,6 +4,7 @@ import com.goodfunds.domain.Category;
 import com.goodfunds.domain.TipoCategoria;
 import com.goodfunds.domain.Transaction;
 import com.goodfunds.domain.User;
+import com.goodfunds.dto.TransactionCategoryRequest;
 import com.goodfunds.dto.TransactionRequest;
 import com.goodfunds.dto.TransactionResponse;
 import com.goodfunds.exception.CategoryNotFoundException;
@@ -99,6 +100,20 @@ public class TransactionService {
 
         // saveAndFlush garante que @UpdateTimestamp seja aplicado antes de mapear a resposta,
         // evitando devolver um updatedAt obsoleto ao cliente.
+        Transaction saved = transactionRepository.saveAndFlush(transaction);
+        return TransactionResponse.from(saved);
+    }
+
+    @Transactional
+    public TransactionResponse updateCategory(UUID userId, UUID id, TransactionCategoryRequest request) {
+        Transaction transaction = transactionRepository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new TransactionNotFoundException(id));
+
+        Category category = loadCategoryForUser(request.categoryId(), userId);
+        transaction.setCategory(category);
+
+        // saveAndFlush garante que @UpdateTimestamp seja aplicado antes de mapear a resposta,
+        // refletindo o updatedAt renovado da recategorizacao.
         Transaction saved = transactionRepository.saveAndFlush(transaction);
         return TransactionResponse.from(saved);
     }

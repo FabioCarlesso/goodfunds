@@ -5,6 +5,7 @@ import com.goodfunds.domain.FormaPagamento;
 import com.goodfunds.domain.TipoCategoria;
 import com.goodfunds.domain.Transaction;
 import com.goodfunds.domain.User;
+import com.goodfunds.dto.TransactionCategoryRequest;
 import com.goodfunds.dto.TransactionRequest;
 import com.goodfunds.dto.TransactionResponse;
 import com.goodfunds.exception.CategoryNotFoundException;
@@ -227,6 +228,89 @@ class TransactionServiceTest {
 
         assertThatThrownBy(() -> transactionService.update(user.getId(), transaction.getId(), request))
                 .isInstanceOf(CategoryNotFoundException.class);
+    }
+
+    @Test
+    void updateCategory_changesOnlyCategoryAndReturnsResponse() {
+        User user = buildUser();
+        Category oldCategory = buildCategory(user, "Alimentacao", TipoCategoria.DESPESA);
+        Category newCategory = buildCategory(user, "Lazer", TipoCategoria.DESPESA);
+        Transaction transaction = Transaction.builder()
+                .id(UUID.randomUUID())
+                .descricao("Mercado")
+                .valor(new BigDecimal("50.00"))
+                .data(LocalDate.of(2026, 4, 1))
+                .formaPagamento(FormaPagamento.PIX)
+                .category(oldCategory)
+                .user(user)
+                .build();
+
+        TransactionCategoryRequest request = new TransactionCategoryRequest(newCategory.getId());
+
+        when(transactionRepository.findByIdAndUserId(transaction.getId(), user.getId()))
+                .thenReturn(Optional.of(transaction));
+        when(categoryRepository.findByIdAndUserId(newCategory.getId(), user.getId()))
+                .thenReturn(Optional.of(newCategory));
+        when(transactionRepository.saveAndFlush(transaction)).thenReturn(transaction);
+
+        TransactionResponse response = transactionService.updateCategory(
+                user.getId(), transaction.getId(), request);
+
+        assertThat(response.categoryId()).isEqualTo(newCategory.getId());
+        assertThat(response.categoryNome()).isEqualTo("Lazer");
+        // Demais campos permanecem intactos.
+        assertThat(response.descricao()).isEqualTo("Mercado");
+        assertThat(response.valor()).isEqualByComparingTo("50.00");
+        assertThat(response.data()).isEqualTo(LocalDate.of(2026, 4, 1));
+        assertThat(response.formaPagamento()).isEqualTo(FormaPagamento.PIX);
+        assertThat(transaction.getCategory()).isSameAs(newCategory);
+        verify(transactionRepository).saveAndFlush(transaction);
+    }
+
+    @Test
+    void updateCategory_whenTransactionNotFoundOrNotOwnedByUser_throws() {
+        User user = buildUser();
+        UUID id = UUID.randomUUID();
+        TransactionCategoryRequest request = new TransactionCategoryRequest(UUID.randomUUID());
+
+        when(transactionRepository.findByIdAndUserId(id, user.getId())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> transactionService.updateCategory(user.getId(), id, request))
+                .isInstanceOf(TransactionNotFoundException.class)
+                .hasMessageContaining(id.toString());
+
+        verify(categoryRepository, never()).findByIdAndUserId(any(), any());
+        verify(transactionRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void updateCategory_whenCategoryDoesNotBelongToUser_throwsCategoryNotFound() {
+        User user = buildUser();
+        Category oldCategory = buildCategory(user, "Alimentacao", TipoCategoria.DESPESA);
+        Transaction transaction = Transaction.builder()
+                .id(UUID.randomUUID())
+                .descricao("desc")
+                .valor(new BigDecimal("10.00"))
+                .data(LocalDate.of(2026, 4, 1))
+                .formaPagamento(FormaPagamento.PIX)
+                .category(oldCategory)
+                .user(user)
+                .build();
+
+        UUID otherCategoryId = UUID.randomUUID();
+        TransactionCategoryRequest request = new TransactionCategoryRequest(otherCategoryId);
+
+        when(transactionRepository.findByIdAndUserId(transaction.getId(), user.getId()))
+                .thenReturn(Optional.of(transaction));
+        when(categoryRepository.findByIdAndUserId(otherCategoryId, user.getId()))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> transactionService.updateCategory(
+                user.getId(), transaction.getId(), request))
+                .isInstanceOf(CategoryNotFoundException.class);
+
+        assertThat(transaction.getCategory()).isSameAs(oldCategory);
+        verify(transactionRepository, never()).saveAndFlush(any());
     }
 
     @Test
