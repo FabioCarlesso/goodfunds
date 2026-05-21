@@ -31,7 +31,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -57,6 +59,9 @@ class InvoiceProcessingServiceIntegrationTest {
 
     private User owner;
     private Category outros;
+    private Category alimentacao;
+    private Category transporte;
+    private Category lazer;
 
     @BeforeEach
     void setup() {
@@ -73,6 +78,21 @@ class InvoiceProcessingServiceIntegrationTest {
                 .build());
         outros = categoryRepository.save(Category.builder()
                 .nome("Outros")
+                .tipo(TipoCategoria.DESPESA)
+                .user(owner)
+                .build());
+        alimentacao = categoryRepository.save(Category.builder()
+                .nome("Alimentacao")
+                .tipo(TipoCategoria.DESPESA)
+                .user(owner)
+                .build());
+        transporte = categoryRepository.save(Category.builder()
+                .nome("Transporte")
+                .tipo(TipoCategoria.DESPESA)
+                .user(owner)
+                .build());
+        lazer = categoryRepository.save(Category.builder()
+                .nome("Lazer")
                 .tipo(TipoCategoria.DESPESA)
                 .user(owner)
                 .build());
@@ -95,13 +115,20 @@ class InvoiceProcessingServiceIntegrationTest {
         assertThat(transactions).hasSize(5);
         assertThat(transactions).allSatisfy(tx -> {
             assertThat(tx.getFormaPagamento()).isEqualTo(FormaPagamento.CARTAO_CREDITO);
-            assertThat(tx.getCategory().getId()).isEqualTo(outros.getId());
             assertThat(tx.getUser().getId()).isEqualTo(owner.getId());
             assertThat(tx.getInvoice().getId()).isEqualTo(invoice.getId());
         });
-        assertThat(transactions).extracting(Transaction::getDescricao)
-                .containsExactlyInAnyOrder(
-                        "MERCADO LIVRE", "UBER TRIP", "PADARIA CENTRAL", "NETFLIX", "POSTO SHELL");
+
+        Map<String, UUID> categoryIdByDesc = transactions.stream()
+                .collect(Collectors.toMap(Transaction::getDescricao, tx -> tx.getCategory().getId()));
+
+        // Suggestions: mercado->Alimentacao, uber->Transporte, padaria->Alimentacao,
+        //              netflix->Lazer, posto->Transporte
+        assertThat(categoryIdByDesc).containsEntry("MERCADO LIVRE", alimentacao.getId());
+        assertThat(categoryIdByDesc).containsEntry("UBER TRIP", transporte.getId());
+        assertThat(categoryIdByDesc).containsEntry("PADARIA CENTRAL", alimentacao.getId());
+        assertThat(categoryIdByDesc).containsEntry("NETFLIX", lazer.getId());
+        assertThat(categoryIdByDesc).containsEntry("POSTO SHELL", transporte.getId());
     }
 
     @Test
@@ -129,6 +156,23 @@ class InvoiceProcessingServiceIntegrationTest {
         processingService.process(owner.getId(), invoice.getId());
 
         assertThat(transactionRepository.findByInvoiceId(invoice.getId())).hasSize(5);
+    }
+
+    @Test
+    void process_whenCategoryNotSeeded_fallsBackToOutros() throws IOException {
+        // Remove Alimentacao/Transporte/Lazer -> all transactions fall back to Outros
+        transactionRepository.deleteAll();
+        categoryRepository.delete(alimentacao);
+        categoryRepository.delete(transporte);
+        categoryRepository.delete(lazer);
+
+        Invoice invoice = persistInvoiceWithSamplePdf();
+        processingService.process(owner.getId(), invoice.getId());
+
+        List<Transaction> transactions = transactionRepository.findByInvoiceId(invoice.getId());
+        assertThat(transactions).hasSize(5);
+        assertThat(transactions).allSatisfy(tx ->
+                assertThat(tx.getCategory().getId()).isEqualTo(outros.getId()));
     }
 
     @Test

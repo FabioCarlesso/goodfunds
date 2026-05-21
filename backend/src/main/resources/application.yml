@@ -3,6 +3,8 @@ spring:
     name: goodfunds
   profiles:
     active: dev
+  config:
+    import: optional:classpath:category-rules.yml
   jpa:
     open-in-view: false
     properties:

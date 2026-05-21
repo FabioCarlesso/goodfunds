@@ -1,0 +1,15 @@
+app:
+  categories:
+    rules:
+      - keywords: [ifood, rappi, padaria, restaurante, lanchonete, mercado, supermercado, acougue, pizzaria]
+        category: Alimentacao
+      - keywords: [uber, "99", cabify, taxi, posto, combustivel, estacionamento, onibus, metro]
+        category: Transporte
+      - keywords: [netflix, spotify, disney, hbo, prime, cinema, teatro, streaming]
+        category: Lazer
+      - keywords: [farmacia, drogaria, hospital, clinica, medico, dentista, plano]
+        category: Saude
+      - keywords: [escola, faculdade, curso, udemy, alura, livraria]
+        category: Educacao
+      - keywords: [aluguel, condominio, energia, eletrica, agua, gas, luz]
+        category: Moradia

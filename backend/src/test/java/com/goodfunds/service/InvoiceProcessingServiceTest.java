@@ -37,6 +37,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -50,6 +51,7 @@ class InvoiceProcessingServiceTest {
     @Mock private CategoryRepository categoryRepository;
     @Mock private InvoiceParserFactory parserFactory;
     @Mock private InvoiceParser parser;
+    @Mock private CategorySuggestionService categorySuggestionService;
 
     private InvoiceProcessingService service;
 
@@ -61,7 +63,8 @@ class InvoiceProcessingServiceTest {
     void setUp() {
         InvoiceUploadProperties properties = new InvoiceUploadProperties();
         service = new InvoiceProcessingService(
-                invoiceRepository, transactionRepository, categoryRepository, parserFactory, properties);
+                invoiceRepository, transactionRepository, categoryRepository,
+                parserFactory, properties, categorySuggestionService);
 
         owner = User.builder()
                 .id(UUID.randomUUID())
@@ -93,8 +96,6 @@ class InvoiceProcessingServiceTest {
                         new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 1), "MERCADO", new BigDecimal("89.90")),
                         new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 5), "UBER", new BigDecimal("35.40"))));
         stubParsing(parsed);
-        when(categoryRepository.findFirstByUserIdAndNomeIgnoreCaseOrderByIdAsc(owner.getId(), "Outros"))
-                .thenReturn(Optional.of(outros));
         when(invoiceRepository.save(any(Invoice.class))).thenAnswer(call -> call.getArgument(0));
 
         InvoiceResponse response = service.process(owner.getId(), invoice.getId());
@@ -111,11 +112,61 @@ class InvoiceProcessingServiceTest {
         assertThat(saved).hasSize(2);
         assertThat(saved).allSatisfy(tx -> {
             assertThat(tx.getFormaPagamento()).isEqualTo(FormaPagamento.CARTAO_CREDITO);
-            assertThat(tx.getCategory()).isEqualTo(outros);
             assertThat(tx.getInvoice()).isEqualTo(invoice);
             assertThat(tx.getUser()).isEqualTo(owner);
         });
         assertThat(saved).extracting(Transaction::getDescricao).containsExactly("MERCADO", "UBER");
+    }
+
+    @Test
+    void process_whenSuggestionMatchesExistingCategory_usesIt() {
+        Category transporte = Category.builder()
+                .id(UUID.randomUUID())
+                .nome("Transporte")
+                .tipo(TipoCategoria.DESPESA)
+                .user(owner)
+                .build();
+        ParsedInvoice parsed = new ParsedInvoice(
+                YearMonth.of(2025, 6),
+                new BigDecimal("35.40"),
+                List.of(new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 5), "UBER TRIP", new BigDecimal("35.40"))));
+
+        when(invoiceRepository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(parserFactory.forInvoice(invoice)).thenReturn(parser);
+        lenient().when(parser.parse(any(File.class))).thenReturn(parsed);
+        when(categoryRepository.findByUserId(owner.getId())).thenReturn(List.of(outros, transporte));
+        when(categorySuggestionService.suggest("UBER TRIP")).thenReturn(Optional.of("Transporte"));
+        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(call -> call.getArgument(0));
+
+        service.process(owner.getId(), invoice.getId());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Transaction>> captor = ArgumentCaptor.forClass(List.class);
+        verify(transactionRepository).saveAll(captor.capture());
+        assertThat(captor.getValue().get(0).getCategory()).isEqualTo(transporte);
+    }
+
+    @Test
+    void process_whenSuggestedCategoryNotInUserList_fallsBackToDefault() {
+        ParsedInvoice parsed = new ParsedInvoice(
+                YearMonth.of(2025, 6),
+                new BigDecimal("35.40"),
+                List.of(new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 5), "UBER TRIP", new BigDecimal("35.40"))));
+
+        when(invoiceRepository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(parserFactory.forInvoice(invoice)).thenReturn(parser);
+        lenient().when(parser.parse(any(File.class))).thenReturn(parsed);
+        // Transporte category not seeded for this user
+        when(categoryRepository.findByUserId(owner.getId())).thenReturn(List.of(outros));
+        when(categorySuggestionService.suggest("UBER TRIP")).thenReturn(Optional.of("Transporte"));
+        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(call -> call.getArgument(0));
+
+        service.process(owner.getId(), invoice.getId());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Transaction>> captor = ArgumentCaptor.forClass(List.class);
+        verify(transactionRepository).saveAll(captor.capture());
+        assertThat(captor.getValue().get(0).getCategory()).isEqualTo(outros);
     }
 
     @Test
@@ -125,8 +176,6 @@ class InvoiceProcessingServiceTest {
                 new BigDecimal("89.90"),
                 List.of(new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 1), "MERCADO", new BigDecimal("89.90"))));
         stubParsing(parsed);
-        when(categoryRepository.findFirstByUserIdAndNomeIgnoreCaseOrderByIdAsc(owner.getId(), "Outros"))
-                .thenReturn(Optional.of(outros));
         when(invoiceRepository.save(any(Invoice.class))).thenAnswer(call -> call.getArgument(0));
 
         service.process(owner.getId(), invoice.getId());
@@ -169,9 +218,11 @@ class InvoiceProcessingServiceTest {
                 YearMonth.of(2025, 6),
                 new BigDecimal("89.90"),
                 List.of(new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 1), "MERCADO", new BigDecimal("89.90"))));
-        stubParsing(parsed);
-        when(categoryRepository.findFirstByUserIdAndNomeIgnoreCaseOrderByIdAsc(owner.getId(), "Outros"))
-                .thenReturn(Optional.empty());
+        when(invoiceRepository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(parserFactory.forInvoice(invoice)).thenReturn(parser);
+        lenient().when(parser.parse(any(File.class))).thenReturn(parsed);
+        // No categories at all -> default "Outros" not found
+        when(categoryRepository.findByUserId(owner.getId())).thenReturn(List.of());
         when(invoiceRepository.save(any(Invoice.class))).thenAnswer(call -> call.getArgument(0));
 
         InvoiceResponse response = service.process(owner.getId(), invoice.getId());
@@ -209,7 +260,9 @@ class InvoiceProcessingServiceTest {
                 YearMonth.of(2025, 6),
                 new BigDecimal("89.90"),
                 List.of(new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 1), "ESTORNO", new BigDecimal("-50.00"))));
-        stubParsing(parsed);
+        when(invoiceRepository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
+        when(parserFactory.forInvoice(invoice)).thenReturn(parser);
+        lenient().when(parser.parse(any(File.class))).thenReturn(parsed);
         when(invoiceRepository.save(any(Invoice.class))).thenAnswer(call -> call.getArgument(0));
 
         InvoiceResponse response = service.process(owner.getId(), invoice.getId());
@@ -224,5 +277,7 @@ class InvoiceProcessingServiceTest {
         when(invoiceRepository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
         when(parserFactory.forInvoice(invoice)).thenReturn(parser);
         lenient().when(parser.parse(any(File.class))).thenReturn(parsed);
+        lenient().when(categoryRepository.findByUserId(owner.getId())).thenReturn(List.of(outros));
+        lenient().when(categorySuggestionService.suggest(anyString())).thenReturn(Optional.empty());
     }
 }
