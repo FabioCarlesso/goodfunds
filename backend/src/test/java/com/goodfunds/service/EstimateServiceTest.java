@@ -5,9 +5,9 @@ import com.goodfunds.domain.TipoCategoria;
 import com.goodfunds.domain.User;
 import com.goodfunds.dto.CategoryEstimate;
 import com.goodfunds.dto.EstimateResponse;
-import com.goodfunds.repository.CategoryAmount;
 import com.goodfunds.repository.CategoryRepository;
 import com.goodfunds.repository.TransactionRepository;
+import com.goodfunds.repository.projection.CategoryAmount;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -144,11 +144,72 @@ class EstimateServiceTest {
         assertThat(response.consolidado().projecao()).isEqualByComparingTo("380.45");
     }
 
+    @Test
+    void estimate_receitaCategory_includedAndConsolidatedWithDespesa() {
+        Category salario = category("Salario", TipoCategoria.RECEITA);
+        // Salario (RECEITA): fechados 9000 / 3 = 3000 de media; realizado 5000 -> 5000 * 31 / 22 = 7045.45.
+        // Alimentacao (DESPESA): fechados 900 / 3 = 300; realizado 220 -> 310. Consolidado soma ambos.
+        when(transactionRepository.sumByCategoryAndPeriod(userId, FECHADOS_INICIO, FECHADOS_FIM))
+                .thenReturn(List.of(
+                        new CategoryAmount(salario.getId(), new BigDecimal("9000.00")),
+                        new CategoryAmount(alimentacao.getId(), new BigDecimal("900.00"))));
+        when(transactionRepository.sumByCategoryAndPeriod(userId, ATUAL_INICIO, HOJE))
+                .thenReturn(List.of(
+                        new CategoryAmount(salario.getId(), new BigDecimal("5000.00")),
+                        new CategoryAmount(alimentacao.getId(), new BigDecimal("220.00"))));
+        when(categoryRepository.findByUserId(userId)).thenReturn(List.of(salario, alimentacao));
+
+        EstimateResponse response = estimateService.estimate(userId);
+
+        assertThat(response.categorias())
+                .extracting(CategoryEstimate::categoryNome)
+                .containsExactly("Alimentacao", "Salario");
+
+        CategoryEstimate salarioItem = response.categorias().get(1);
+        assertThat(salarioItem.categoryTipo()).isEqualTo(TipoCategoria.RECEITA);
+        assertThat(salarioItem.media()).isEqualByComparingTo("3000.00");
+        assertThat(salarioItem.realizado()).isEqualByComparingTo("5000.00");
+        assertThat(salarioItem.projecao()).isEqualByComparingTo("7045.45");
+
+        // Consolidado soma receita e despesa juntas.
+        assertThat(response.consolidado().media()).isEqualByComparingTo("3300.00");
+        assertThat(response.consolidado().realizado()).isEqualByComparingTo("5220.00");
+        assertThat(response.consolidado().projecao()).isEqualByComparingTo("7355.45");
+    }
+
+    @Test
+    void estimate_onFirstDayOfMonth_projectionEqualsRealizado() {
+        // Relogio fixo em 01/05/2026: cedo demais para extrapolar (diasDecorridos = 1).
+        Clock firstDayClock = Clock.fixed(Instant.parse("2026-05-01T12:00:00Z"), ZoneOffset.UTC);
+        EstimateService service = new EstimateService(transactionRepository, categoryRepository, firstDayClock);
+        LocalDate primeiroDia = LocalDate.of(2026, 5, 1);
+
+        when(transactionRepository.sumByCategoryAndPeriod(userId, FECHADOS_INICIO, FECHADOS_FIM))
+                .thenReturn(List.of(new CategoryAmount(alimentacao.getId(), new BigDecimal("900.00"))));
+        when(transactionRepository.sumByCategoryAndPeriod(userId, ATUAL_INICIO, primeiroDia))
+                .thenReturn(List.of(new CategoryAmount(alimentacao.getId(), new BigDecimal("100.00"))));
+        when(categoryRepository.findByUserId(userId)).thenReturn(List.of(alimentacao));
+
+        EstimateResponse response = service.estimate(userId);
+
+        assertThat(response.diasDecorridos()).isEqualTo(1);
+        CategoryEstimate item = response.categorias().get(0);
+        assertThat(item.media()).isEqualByComparingTo("300.00");
+        assertThat(item.realizado()).isEqualByComparingTo("100.00");
+        // Sem o guard, seria 100 * 31 = 3100.00; o guard devolve o proprio realizado.
+        assertThat(item.projecao()).isEqualByComparingTo("100.00");
+        assertThat(response.consolidado().projecao()).isEqualByComparingTo("100.00");
+    }
+
     private Category category(String nome) {
+        return category(nome, TipoCategoria.DESPESA);
+    }
+
+    private Category category(String nome, TipoCategoria tipo) {
         return Category.builder()
                 .id(UUID.randomUUID())
                 .nome(nome)
-                .tipo(TipoCategoria.DESPESA)
+                .tipo(tipo)
                 .user(user)
                 .build();
     }

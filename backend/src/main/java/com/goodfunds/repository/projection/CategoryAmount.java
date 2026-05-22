@@ -1,4 +1,4 @@
-package com.goodfunds.repository;
+package com.goodfunds.repository.projection;
 
 import java.math.BigDecimal;
 import java.util.UUID;

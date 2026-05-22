@@ -1,6 +1,7 @@
 package com.goodfunds.repository;
 
 import com.goodfunds.domain.Transaction;
+import com.goodfunds.repository.projection.CategoryAmount;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -26,7 +27,7 @@ public interface TransactionRepository
     List<Transaction> findByInvoiceId(UUID invoiceId);
 
     @Query("""
-            select new com.goodfunds.repository.CategoryAmount(t.category.id, sum(t.valor))
+            select new com.goodfunds.repository.projection.CategoryAmount(t.category.id, sum(t.valor))
             from Transaction t
             where t.user.id = :userId and t.data between :start and :end
             group by t.category.id

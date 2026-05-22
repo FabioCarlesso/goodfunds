@@ -4,9 +4,9 @@ import com.goodfunds.domain.Category;
 import com.goodfunds.dto.CategoryEstimate;
 import com.goodfunds.dto.EstimateResponse;
 import com.goodfunds.dto.EstimateTotals;
-import com.goodfunds.repository.CategoryAmount;
 import com.goodfunds.repository.CategoryRepository;
 import com.goodfunds.repository.TransactionRepository;
+import com.goodfunds.repository.projection.CategoryAmount;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +19,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -33,7 +34,9 @@ import java.util.stream.Collectors;
  *       dividida por 3 (meses sem lancamento contam como zero).</li>
  *   <li><b>realizado</b>: total ja lancado no mes corrente ate a data de referencia.</li>
  *   <li><b>projecao</b>: extrapolacao do realizado parcial para o mes inteiro,
- *       {@code realizado * (diasNoMes / diasDecorridos)}.</li>
+ *       {@code realizado * (diasNoMes / diasDecorridos)}. No primeiro dia do mes
+ *       ({@code diasDecorridos == 1}) a extrapolacao seria distorcida (~31x), entao a
+ *       projecao devolve o proprio realizado.</li>
  * </ul>
  */
 @Service
@@ -80,7 +83,7 @@ public class EstimateService {
 
         List<CategoryEstimate> itens = categoriasAtivas.stream()
                 .map(categorias::get)
-                .filter(category -> category != null)
+                .filter(Objects::nonNull)
                 .sorted(Comparator.comparing(Category::getNome, String.CASE_INSENSITIVE_ORDER))
                 .map(category -> toCategoryEstimate(category, somaFechados, somaAtual, diasNoMes, diasDecorridos))
                 .toList();
@@ -108,6 +111,12 @@ public class EstimateService {
     }
 
     private BigDecimal projetar(BigDecimal realizado, int diasNoMes, int diasDecorridos) {
+        // No primeiro dia do mes (diasDecorridos == 1) a extrapolacao multiplicaria o
+        // realizado por diasNoMes (~31x), produzindo uma projecao financeiramente sem
+        // sentido. Cedo demais para extrapolar: devolve o proprio realizado.
+        if (diasDecorridos <= 1) {
+            return scale(realizado);
+        }
         return realizado
                 .multiply(BigDecimal.valueOf(diasNoMes))
                 .divide(BigDecimal.valueOf(diasDecorridos), 2, RoundingMode.HALF_UP);
