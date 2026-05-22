@@ -220,6 +220,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 instanceUri(request));
     }
 
+    @ExceptionHandler(DuplicateBudgetException.class)
+    public ProblemDetail handleDuplicateBudget(DuplicateBudgetException ex, HttpServletRequest request) {
+        return createProblem(
+                HttpStatus.CONFLICT,
+                "Orcamento duplicado",
+                ex.getMessage(),
+                "budget-duplicate",
+                instanceUri(request));
+    }
+
     @Override
     protected ResponseEntity<Object> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex,
                                                                           HttpHeaders headers,
