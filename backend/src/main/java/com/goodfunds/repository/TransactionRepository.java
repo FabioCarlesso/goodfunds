@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,6 +24,16 @@ public interface TransactionRepository
     boolean existsByCategoryId(UUID categoryId);
 
     List<Transaction> findByInvoiceId(UUID invoiceId);
+
+    @Query("""
+            select new com.goodfunds.repository.CategoryAmount(t.category.id, sum(t.valor))
+            from Transaction t
+            where t.user.id = :userId and t.data between :start and :end
+            group by t.category.id
+            """)
+    List<CategoryAmount> sumByCategoryAndPeriod(@Param("userId") UUID userId,
+                                                @Param("start") LocalDate start,
+                                                @Param("end") LocalDate end);
 
     @Modifying
     @Query("delete from Transaction t where t.invoice.id = :invoiceId")

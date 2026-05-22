@@ -200,6 +200,8 @@ Body de `POST/PUT`: `{ "limite": 500.00, "categoryId": "<uuid>", "mes": 5, "ano"
 | GET | `/reports/evolution?from=YYYY-MM&to=YYYY-MM` | JWT | Evolução mensal no período |
 | GET | `/reports/estimate` | JWT | Projeção do mês atual (média dos últimos 3 meses) |
 
+`GET /reports/estimate` (issue #20) já está implementado; os demais relatórios continuam planejados. A engine `EstimateService` calcula, por categoria do usuário do JWT, a **média dos últimos 3 meses fechados** (soma dos lançamentos no período `[mêsAtual-3 .. mêsAtual-1]` dividida por 3 — meses sem lançamento contam como zero) e a **projeção do mês corrente**, que extrapola o realizado parcial para o mês inteiro pela fórmula `realizado * (diasNoMes / diasDecorridos)`. A resposta traz a data de referência (`ref`, `yyyy-MM`), `diasNoMes`, `diasDecorridos`, o bloco `consolidado` (`media`, `realizado`, `projecao` somados sobre todas as categorias) e a lista `categorias` (mesmos campos por categoria, ordenada por nome; apenas categorias com lançamento no período fechado ou no mês corrente aparecem). A data corrente vem de um bean `Clock` (`ClockConfig`), permitindo relógio fixo nos testes. Cobertura: `EstimateServiceTest` (unitário: sem histórico, histórico parcial, histórico completo e consolidação multi-categoria) e `ReportEstimateControllerIntegrationTest` (HTTP, com relógio fixo, isolamento por usuário e 401 sem token).
+
 ### Actuator
 
 | Método | Rota | Autenticação | Descrição |
