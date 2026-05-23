@@ -1,6 +1,5 @@
 package com.goodfunds.repository;
 
-import com.goodfunds.domain.TipoCategoria;
 import com.goodfunds.domain.Transaction;
 import com.goodfunds.repository.projection.CategoryAmount;
 import com.goodfunds.repository.projection.MonthAmount;
@@ -39,17 +38,16 @@ public interface TransactionRepository
                                                 @Param("end") LocalDate end);
 
     @Query("""
-            select new com.goodfunds.repository.projection.MonthAmount(year(t.data), month(t.data), sum(t.valor))
+            select new com.goodfunds.repository.projection.MonthAmount(
+                year(t.data), month(t.data), t.category.tipo, sum(t.valor))
             from Transaction t
             where t.user.id = :userId and t.data between :start and :end
-            and t.category.tipo = :tipo
-            group by year(t.data), month(t.data)
+            group by year(t.data), month(t.data), t.category.tipo
             order by year(t.data), month(t.data)
             """)
     List<MonthAmount> sumByMonthAndTipo(@Param("userId") UUID userId,
                                         @Param("start") LocalDate start,
-                                        @Param("end") LocalDate end,
-                                        @Param("tipo") TipoCategoria tipo);
+                                        @Param("end") LocalDate end);
 
     @Modifying
     @Query("delete from Transaction t where t.invoice.id = :invoiceId")

@@ -142,6 +142,26 @@ class ReportEvolutionControllerIntegrationTest {
     }
 
     @Test
+    void evolution_invalidDateFormat_returns400() throws Exception {
+        mockMvc.perform(get("/reports/evolution")
+                        .param("from", "abc")
+                        .param("to", "2026-03")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void evolution_rangeExceedingMax_returns400() throws Exception {
+        // 37 meses (2026-01 .. 2029-01) excede o teto de 36 meses.
+        mockMvc.perform(get("/reports/evolution")
+                        .param("from", "2026-01")
+                        .param("to", "2029-01")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:invalid-filter"));
+    }
+
+    @Test
     void evolution_withoutToken_returns401() throws Exception {
         mockMvc.perform(get("/reports/evolution")
                         .param("from", "2026-01")

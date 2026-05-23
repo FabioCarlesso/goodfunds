@@ -99,10 +99,13 @@ class ReportByCategoryControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(3))
                 .andExpect(jsonPath("$[0].nome").value("Alimentacao"))
+                .andExpect(jsonPath("$[0].tipo").value("DESPESA"))
                 .andExpect(jsonPath("$[0].total").value(150.00))
                 .andExpect(jsonPath("$[1].nome").value("Salario"))
+                .andExpect(jsonPath("$[1].tipo").value("RECEITA"))
                 .andExpect(jsonPath("$[1].total").value(3000.00))
                 .andExpect(jsonPath("$[2].nome").value("Transporte"))
+                .andExpect(jsonPath("$[2].tipo").value("DESPESA"))
                 .andExpect(jsonPath("$[2].total").value(80.00));
     }
 
@@ -134,6 +137,14 @@ class ReportByCategoryControllerIntegrationTest {
     @Test
     void byCategory_missingRef_returns400() throws Exception {
         mockMvc.perform(get("/reports/by-category")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void byCategory_invalidRefFormat_returns400() throws Exception {
+        mockMvc.perform(get("/reports/by-category")
+                        .param("ref", "abc")
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isBadRequest());
     }
