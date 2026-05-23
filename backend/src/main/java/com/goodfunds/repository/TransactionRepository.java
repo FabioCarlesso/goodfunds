@@ -2,6 +2,7 @@ package com.goodfunds.repository;
 
 import com.goodfunds.domain.Transaction;
 import com.goodfunds.repository.projection.CategoryAmount;
+import com.goodfunds.repository.projection.MonthAmount;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -35,6 +36,18 @@ public interface TransactionRepository
     List<CategoryAmount> sumByCategoryAndPeriod(@Param("userId") UUID userId,
                                                 @Param("start") LocalDate start,
                                                 @Param("end") LocalDate end);
+
+    @Query("""
+            select new com.goodfunds.repository.projection.MonthAmount(
+                year(t.data), month(t.data), t.category.tipo, sum(t.valor))
+            from Transaction t
+            where t.user.id = :userId and t.data between :start and :end
+            group by year(t.data), month(t.data), t.category.tipo
+            order by year(t.data), month(t.data)
+            """)
+    List<MonthAmount> sumByMonthAndTipo(@Param("userId") UUID userId,
+                                        @Param("start") LocalDate start,
+                                        @Param("end") LocalDate end);
 
     @Modifying
     @Query("delete from Transaction t where t.invoice.id = :invoiceId")

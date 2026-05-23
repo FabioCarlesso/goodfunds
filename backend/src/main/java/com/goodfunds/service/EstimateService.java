@@ -7,6 +7,7 @@ import com.goodfunds.dto.EstimateTotals;
 import com.goodfunds.repository.CategoryRepository;
 import com.goodfunds.repository.TransactionRepository;
 import com.goodfunds.repository.projection.CategoryAmount;
+import com.goodfunds.util.MoneyUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -140,10 +141,10 @@ public class EstimateService {
     }
 
     private static BigDecimal scale(BigDecimal value) {
-        return value == null ? zero() : value.setScale(2, RoundingMode.HALF_UP);
+        return MoneyUtils.scale(value);
     }
 
     private static BigDecimal zero() {
-        return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        return MoneyUtils.zero();
     }
 }
