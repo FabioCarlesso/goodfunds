@@ -12,7 +12,8 @@ import java.time.YearMonth;
  * @param orcado               soma dos limites de orcamento cadastrados para o mes
  * @param saldo                receitas menos despesas
  * @param percentualOrcadoUsado percentual do orcamento consumido pelas despesas;
- *                              zero quando nao ha orcamento cadastrado
+ *                              zero quando nao ha orcamento cadastrado.
+ *                              Pode exceder 100 quando as despesas superam o limite orcado.
  */
 public record SummaryResponse(
         YearMonth ref,
