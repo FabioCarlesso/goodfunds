@@ -4,16 +4,21 @@ import com.goodfunds.domain.Category;
 import com.goodfunds.domain.TipoCategoria;
 import com.goodfunds.dto.ByCategoryItem;
 import com.goodfunds.dto.MonthlyEntry;
+import com.goodfunds.dto.SummaryResponse;
 import com.goodfunds.exception.InvalidTransactionFilterException;
+import com.goodfunds.repository.BudgetRepository;
 import com.goodfunds.repository.CategoryRepository;
 import com.goodfunds.repository.TransactionRepository;
 import com.goodfunds.repository.projection.CategoryAmount;
 import com.goodfunds.repository.projection.MonthAmount;
+import com.goodfunds.repository.projection.TipoAmount;
 import com.goodfunds.util.MoneyUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
@@ -37,11 +42,58 @@ public class ReportService {
 
     private final TransactionRepository transactionRepository;
     private final CategoryRepository categoryRepository;
+    private final BudgetRepository budgetRepository;
+    private final Clock clock;
 
     public ReportService(TransactionRepository transactionRepository,
-                         CategoryRepository categoryRepository) {
+                         CategoryRepository categoryRepository,
+                         BudgetRepository budgetRepository,
+                         Clock clock) {
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
+        this.budgetRepository = budgetRepository;
+        this.clock = clock;
+    }
+
+    @Transactional(readOnly = true)
+    public SummaryResponse summary(UUID userId, YearMonth ref) {
+        if (ref == null) {
+            ref = YearMonth.now(clock);
+        }
+        LocalDate start = ref.atDay(1);
+        LocalDate end = ref.atEndOfMonth();
+
+        List<TipoAmount> tipoAmounts = transactionRepository.sumByTipoAndPeriod(userId, start, end);
+
+        BigDecimal receitas = tipoAmounts.stream()
+                .filter(a -> a.tipo() == TipoCategoria.RECEITA)
+                .map(TipoAmount::total)
+                .findFirst()
+                .map(MoneyUtils::scale)
+                .orElse(MoneyUtils.zero());
+
+        BigDecimal despesas = tipoAmounts.stream()
+                .filter(a -> a.tipo() == TipoCategoria.DESPESA)
+                .map(TipoAmount::total)
+                .findFirst()
+                .map(MoneyUtils::scale)
+                .orElse(MoneyUtils.zero());
+
+        BigDecimal orcado = MoneyUtils.scale(
+                budgetRepository.sumLimiteByUserIdAndAnoAndMes(userId, ref.getYear(), ref.getMonthValue()));
+
+        BigDecimal saldo = MoneyUtils.scale(receitas.subtract(despesas));
+        BigDecimal percentual = calcPercentualOrcadoUsado(despesas, orcado);
+
+        return new SummaryResponse(ref, receitas, despesas, orcado, saldo, percentual);
+    }
+
+    private static BigDecimal calcPercentualOrcadoUsado(BigDecimal despesas, BigDecimal orcado) {
+        if (orcado.compareTo(BigDecimal.ZERO) == 0) {
+            return MoneyUtils.zero();
+        }
+        return despesas.multiply(new BigDecimal("100"))
+                .divide(orcado, 2, RoundingMode.HALF_UP);
     }
 
     @Transactional(readOnly = true)

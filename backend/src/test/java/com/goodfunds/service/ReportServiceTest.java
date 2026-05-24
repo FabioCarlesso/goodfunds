@@ -5,11 +5,14 @@ import com.goodfunds.domain.TipoCategoria;
 import com.goodfunds.domain.User;
 import com.goodfunds.dto.ByCategoryItem;
 import com.goodfunds.dto.MonthlyEntry;
+import com.goodfunds.dto.SummaryResponse;
 import com.goodfunds.exception.InvalidTransactionFilterException;
+import com.goodfunds.repository.BudgetRepository;
 import com.goodfunds.repository.CategoryRepository;
 import com.goodfunds.repository.TransactionRepository;
 import com.goodfunds.repository.projection.CategoryAmount;
 import com.goodfunds.repository.projection.MonthAmount;
+import com.goodfunds.repository.projection.TipoAmount;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,8 +20,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,6 +42,10 @@ class ReportServiceTest {
 
     @Mock private TransactionRepository transactionRepository;
     @Mock private CategoryRepository categoryRepository;
+    @Mock private BudgetRepository budgetRepository;
+
+    // Congela "hoje" em 2026-05-22 para testes que dependem de mes corrente.
+    private final Clock fixedClock = Clock.fixed(Instant.parse("2026-05-22T12:00:00Z"), ZoneOffset.UTC);
 
     private ReportService reportService;
 
@@ -47,11 +57,92 @@ class ReportServiceTest {
 
     @BeforeEach
     void setup() {
-        reportService = new ReportService(transactionRepository, categoryRepository);
+        reportService = new ReportService(transactionRepository, categoryRepository, budgetRepository, fixedClock);
         user = User.builder().id(userId).nome("Test").email("t@example.com").senha("hash").build();
         alimentacao = category("Alimentacao", TipoCategoria.DESPESA);
         transporte = category("Transporte", TipoCategoria.DESPESA);
         salario = category("Salario", TipoCategoria.RECEITA);
+    }
+
+    // ---------- summary ----------
+
+    @Test
+    void summary_computesAllFieldsCorrectly() {
+        YearMonth ref = YearMonth.of(2026, 5);
+        when(transactionRepository.sumByTipoAndPeriod(userId, ref.atDay(1), ref.atEndOfMonth()))
+                .thenReturn(List.of(
+                        new TipoAmount(TipoCategoria.RECEITA, new BigDecimal("3000")),
+                        new TipoAmount(TipoCategoria.DESPESA, new BigDecimal("1200"))));
+        when(budgetRepository.sumLimiteByUserIdAndAnoAndMes(userId, 2026, 5))
+                .thenReturn(new BigDecimal("2000"));
+
+        SummaryResponse result = reportService.summary(userId, ref);
+
+        assertThat(result.ref()).isEqualTo(ref);
+        assertThat(result.receitas()).isEqualByComparingTo("3000.00");
+        assertThat(result.despesas()).isEqualByComparingTo("1200.00");
+        assertThat(result.orcado()).isEqualByComparingTo("2000.00");
+        assertThat(result.saldo()).isEqualByComparingTo("1800.00");
+        assertThat(result.percentualOrcadoUsado()).isEqualByComparingTo("60.00");
+    }
+
+    @Test
+    void summary_noTransactionsNoBudget_returnsAllZeros() {
+        YearMonth ref = YearMonth.of(2026, 5);
+        when(transactionRepository.sumByTipoAndPeriod(userId, ref.atDay(1), ref.atEndOfMonth()))
+                .thenReturn(List.of());
+        when(budgetRepository.sumLimiteByUserIdAndAnoAndMes(userId, 2026, 5))
+                .thenReturn(BigDecimal.ZERO);
+
+        SummaryResponse result = reportService.summary(userId, ref);
+
+        assertThat(result.receitas()).isEqualByComparingTo("0.00");
+        assertThat(result.despesas()).isEqualByComparingTo("0.00");
+        assertThat(result.orcado()).isEqualByComparingTo("0.00");
+        assertThat(result.saldo()).isEqualByComparingTo("0.00");
+        assertThat(result.percentualOrcadoUsado()).isEqualByComparingTo("0.00");
+    }
+
+    @Test
+    void summary_zeroBudget_percentualIsZero() {
+        YearMonth ref = YearMonth.of(2026, 5);
+        when(transactionRepository.sumByTipoAndPeriod(userId, ref.atDay(1), ref.atEndOfMonth()))
+                .thenReturn(List.of(new TipoAmount(TipoCategoria.DESPESA, new BigDecimal("500"))));
+        when(budgetRepository.sumLimiteByUserIdAndAnoAndMes(userId, 2026, 5))
+                .thenReturn(BigDecimal.ZERO);
+
+        SummaryResponse result = reportService.summary(userId, ref);
+
+        assertThat(result.despesas()).isEqualByComparingTo("500.00");
+        assertThat(result.percentualOrcadoUsado()).isEqualByComparingTo("0.00");
+    }
+
+    @Test
+    void summary_onlyDespesas_saldoIsNegative() {
+        YearMonth ref = YearMonth.of(2026, 5);
+        when(transactionRepository.sumByTipoAndPeriod(userId, ref.atDay(1), ref.atEndOfMonth()))
+                .thenReturn(List.of(new TipoAmount(TipoCategoria.DESPESA, new BigDecimal("800"))));
+        when(budgetRepository.sumLimiteByUserIdAndAnoAndMes(userId, 2026, 5))
+                .thenReturn(new BigDecimal("1000"));
+
+        SummaryResponse result = reportService.summary(userId, ref);
+
+        assertThat(result.receitas()).isEqualByComparingTo("0.00");
+        assertThat(result.saldo()).isEqualByComparingTo("-800.00");
+        assertThat(result.percentualOrcadoUsado()).isEqualByComparingTo("80.00");
+    }
+
+    @Test
+    void summary_nullRef_defaultsToCurrentMonth() {
+        YearMonth currentMonth = YearMonth.of(2026, 5); // fixedClock aponta para 2026-05-22
+        when(transactionRepository.sumByTipoAndPeriod(userId, currentMonth.atDay(1), currentMonth.atEndOfMonth()))
+                .thenReturn(List.of());
+        when(budgetRepository.sumLimiteByUserIdAndAnoAndMes(userId, 2026, 5))
+                .thenReturn(BigDecimal.ZERO);
+
+        SummaryResponse result = reportService.summary(userId, null);
+
+        assertThat(result.ref()).isEqualTo(currentMonth);
     }
 
     // ---------- byCategory ----------

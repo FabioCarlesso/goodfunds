@@ -3,6 +3,7 @@ package com.goodfunds.controller;
 import com.goodfunds.dto.ByCategoryItem;
 import com.goodfunds.dto.EstimateResponse;
 import com.goodfunds.dto.MonthlyEntry;
+import com.goodfunds.dto.SummaryResponse;
 import com.goodfunds.security.AuthenticatedUser;
 import com.goodfunds.service.EstimateService;
 import com.goodfunds.service.ReportService;
@@ -26,6 +27,13 @@ public class ReportController {
     public ReportController(EstimateService estimateService, ReportService reportService) {
         this.estimateService = estimateService;
         this.reportService = reportService;
+    }
+
+    @GetMapping("/summary")
+    public SummaryResponse summary(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth ref) {
+        return reportService.summary(principal.getUserId(), ref);
     }
 
     @GetMapping("/estimate")
