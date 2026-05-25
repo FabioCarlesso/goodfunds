@@ -2,7 +2,7 @@
 
 ## Estado atual
 
-O scaffold do frontend foi criado em `frontend/` (issue #24): projeto Vite + React + TypeScript com Tailwind configurado, cliente HTTP (Axios) com interceptor `Authorization: Bearer`, estrutura de pastas base e testes com Vitest + React Testing Library. As telas ainda serao implementadas nas proximas atividades da Sprint 4.
+O scaffold do frontend foi criado em `frontend/` (issue #24): projeto Vite + React + TypeScript com Tailwind configurado, cliente HTTP (Axios) com interceptor `Authorization: Bearer`, estrutura de pastas base e testes com Vitest + React Testing Library. O fluxo de autenticacao foi implementado (issue #25): roteamento com React Router, telas `/login` e `/register` consumindo `/auth/*`, `AuthContext` com persistencia do JWT em `localStorage` e rota protegida via `<RequireAuth>`. As demais telas serao implementadas nas proximas atividades da Sprint 4.
 
 ## Stack
 
@@ -10,6 +10,7 @@ O scaffold do frontend foi criado em `frontend/` (issue #24): projeto Vite + Rea
 - React
 - TypeScript
 - Tailwind CSS
+- React Router (roteamento)
 - Axios (cliente HTTP)
 - Vitest + React Testing Library (testes)
 
@@ -33,23 +34,22 @@ O frontend deve entregar a experiencia MVP para uso pessoal do Goodfunds, consum
 - Persistencia do token no cliente conforme decisao da sprint de frontend.
 - Consumo de endpoints paginados para listagens.
 
-## Decisoes tomadas no scaffold
+## Decisoes tomadas
 
-- Estrutura de pastas: `src/api`, `src/components`, `src/pages`, `src/hooks`, `src/lib`.
+- Estrutura de pastas: `src/api`, `src/components`, `src/contexts`, `src/pages`, `src/hooks`, `src/lib`, `src/types`.
 - Cliente HTTP: Axios com interceptors (Bearer no request; redirect para `/login` em 401).
 - Estrategia de testes: Vitest + React Testing Library (ambiente `jsdom`).
-- Persistencia do JWT: `localStorage` (isolada em `src/lib/auth-token.ts`).
+- Persistencia do JWT: `localStorage` (isolada em `src/lib/auth-token.ts`). Trade-off documentado em `frontend/README.md`: simples para o MVP, porem exposto a XSS; trocar por `sessionStorage`/cookie `httpOnly` exige mudar so esse arquivo.
+- Roteamento: React Router em `src/App.tsx`; estado global de auth via `AuthContext`/`useAuth` (issue #25).
+- Formularios: controlados nativos com `useState` (sem lib dedicada por ora).
 
 ## Decisoes pendentes
 
-- Biblioteca de componentes, se necessaria.
-- Roteamento (React Router) e gerenciamento de estado global.
+- Biblioteca de componentes, se necessaria (ha primitivos proprios em `src/components/ui`).
 - Estrategia de cache de dados (React Query / SWR).
-- Padrao de formularios e validacao client-side.
 - Biblioteca de graficos para relatorios.
 
 ## Proximos passos
 
-- Configurar roteamento e layout base.
-- Implementar fluxo de login/cadastro consumindo a API de auth.
-- Conectar telas aos endpoints do backend conforme forem entregues.
+- Implementar tela Dashboard consumindo `/reports/*`.
+- Conectar as demais telas aos endpoints do backend conforme forem entregues.

@@ -1,6 +1,6 @@
 # Goodfunds — Frontend
 
-SPA do Goodfunds construida com **Vite + React + TypeScript + Tailwind CSS**. Consome a API REST do backend (`../backend`).
+SPA do Goodfunds construida com **Vite + React + TypeScript + Tailwind CSS**, com roteamento via **React Router**. Consome a API REST do backend (`../backend`).
 
 ## Requisitos
 
@@ -40,13 +40,15 @@ Apenas variaveis prefixadas com `VITE_` ficam expostas no cliente. Veja `.env.ex
 frontend/
 ├── public/              # Arquivos estaticos servidos como estao
 ├── src/
-│   ├── api/             # Cliente HTTP (axios) e chamadas a API
-│   ├── components/      # Componentes reutilizaveis de UI
+│   ├── api/             # Cliente HTTP (axios), chamadas a API e parsing de erros
+│   ├── components/      # Componentes reutilizaveis (RequireAuth, ui/)
+│   ├── contexts/        # Context API (AuthProvider / AuthContext)
 │   ├── pages/           # Telas da aplicacao (uma por rota)
-│   ├── hooks/           # Custom hooks React
+│   ├── hooks/           # Custom hooks React (useAuth, useAuthToken)
 │   ├── lib/             # Utilitarios e config (env, token de auth)
+│   ├── types/           # Interfaces dos contratos da API
 │   ├── test/            # Setup dos testes (Vitest + Testing Library)
-│   ├── App.tsx          # Componente raiz
+│   ├── App.tsx          # Componente raiz: providers + rotas
 │   └── main.tsx         # Entry point do Vite
 ├── index.html
 ├── tailwind.config.js
@@ -54,12 +56,39 @@ frontend/
 └── vite.config.ts
 ```
 
+## Rotas
+
+O roteamento (React Router) fica em `src/App.tsx`:
+
+| Rota | Acesso | Tela |
+|---|---|---|
+| `/login` | Publica (redireciona p/ `/` se autenticado) | `LoginPage` |
+| `/register` | Publica (redireciona p/ `/` se autenticado) | `RegisterPage` |
+| `/` | Protegida (`<RequireAuth>`) | `HomePage` (placeholder do Dashboard) |
+| `*` | — | redireciona para `/` |
+
+`<RequireAuth>` (`src/components/RequireAuth.tsx`) bloqueia rotas autenticadas: sem JWT, redireciona para `/login` guardando a rota de origem para retorno apos o login.
+
+## Autenticacao
+
+- Telas `LoginPage` (`/login`) e `RegisterPage` (`/register`) consomem `POST /auth/login` e `POST /auth/register` (`src/api/auth.ts`).
+- O estado global de auth vive no `AuthProvider` (`src/contexts/`), consumido via `useAuth()`. `login(token)` persiste o JWT, `logout()` o limpa.
+- Apos o cadastro, o usuario e redirecionado para `/login` com mensagem de sucesso; apos o login, vai para a rota de origem (ou `/`).
+
+### Persistencia do JWT (decisao MVP)
+
+O JWT e armazenado em **`localStorage`** (`src/lib/auth-token.ts`), isolado atras de `getToken/setToken/clearToken`.
+
+- **Por que:** simplicidade no MVP de uso pessoal — sobrevive a recarregar a pagina e nao exige cookies/CSRF nem backend de sessao.
+- **Trade-off:** `localStorage` e acessivel por JavaScript, logo vulneravel a roubo de token via XSS (um cookie `httpOnly` seria mais resistente). Mitiga-se mantendo dependencias atualizadas e evitando renderizar HTML nao confiavel. Trocar a estrategia (sessionStorage ou cookie `httpOnly`) exige mudar apenas `auth-token.ts`.
+
 ## Comunicacao com a API
 
 O cliente HTTP fica em `src/api/http.ts`:
 
 - **Request interceptor:** injeta `Authorization: Bearer <token>` quando ha JWT salvo (`src/lib/auth-token.ts`).
 - **Response interceptor:** em respostas `401`, limpa o token e redireciona para `/login`.
+- **Erros:** `src/api/errors.ts` traduz o `ProblemDetail` (RFC 7807) do backend em mensagem amigavel para as telas.
 
 ## Testes
 

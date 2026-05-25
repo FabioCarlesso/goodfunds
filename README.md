@@ -4,7 +4,7 @@ Goodfunds e um sistema de controle financeiro pessoal para uso proprio. O MVP co
 
 ## Estado atual
 
-O repositorio esta na Sprint 1. O backend Spring Boot ja foi criado em `backend/`, com profiles `dev`, `test` e `prod`, migrations Flyway, autenticacao JWT, CRUDs de categorias/transacoes/orcamentos e upload autenticado de faturas PDF. O Docker Compose basico (app + postgres) ja esta disponivel (issue #11). O scaffold do frontend (Vite + React + TypeScript + Tailwind) ja foi criado em `frontend/` (issue #24); as telas serao implementadas nas proximas atividades.
+O repositorio esta na Sprint 1. O backend Spring Boot ja foi criado em `backend/`, com profiles `dev`, `test` e `prod`, migrations Flyway, autenticacao JWT, CRUDs de categorias/transacoes/orcamentos e upload autenticado de faturas PDF. O Docker Compose basico (app + postgres) ja esta disponivel (issue #11). O scaffold do frontend (Vite + React + TypeScript + Tailwind) ja foi criado em `frontend/` (issue #24) e o fluxo de autenticacao (telas de login/cadastro, roteamento e persistencia do JWT) foi implementado (issue #25); as demais telas serao implementadas nas proximas atividades.
 
 ## Estrutura
 
@@ -115,5 +115,5 @@ Documentos de contexto e planejamento:
 
 - Backend: Java 17, Spring Boot 3, Maven, JPA/Hibernate, Spring Security, Flyway, Actuator, Caffeine (cache de relatorios).
 - Banco: PostgreSQL planejado para dev/prod e H2 in-memory no bootstrap/testes.
-- Frontend: Vite, React, TypeScript, Tailwind CSS, Axios; testes com Vitest + React Testing Library.
+- Frontend: Vite, React, TypeScript, Tailwind CSS, React Router, Axios; testes com Vitest + React Testing Library.
 - Documentacao de API planejada: Swagger/OpenAPI.
