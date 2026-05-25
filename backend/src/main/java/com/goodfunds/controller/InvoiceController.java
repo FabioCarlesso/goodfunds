@@ -4,6 +4,9 @@ import com.goodfunds.domain.OrigemFatura;
 import com.goodfunds.dto.InvoiceResponse;
 import com.goodfunds.security.AuthenticatedUser;
 import com.goodfunds.service.InvoiceService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,6 +21,8 @@ import java.net.URI;
 
 @RestController
 @RequestMapping("/invoices")
+@Tag(name = "Faturas", description = "Upload de faturas em PDF para extracao de lancamentos.")
+@SecurityRequirement(name = "bearerAuth")
 public class InvoiceController {
 
     private final InvoiceService invoiceService;
@@ -27,6 +32,7 @@ public class InvoiceController {
     }
 
     @PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Faz upload de uma fatura PDF e registra a fatura para processamento.")
     public ResponseEntity<InvoiceResponse> upload(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam("file") MultipartFile file,

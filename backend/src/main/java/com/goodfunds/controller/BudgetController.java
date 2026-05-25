@@ -4,6 +4,9 @@ import com.goodfunds.dto.BudgetRequest;
 import com.goodfunds.dto.BudgetResponse;
 import com.goodfunds.security.AuthenticatedUser;
 import com.goodfunds.service.BudgetService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +28,8 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/budgets")
+@Tag(name = "Orcamentos", description = "Planejamento financeiro: orcamentos mensais por categoria.")
+@SecurityRequirement(name = "bearerAuth")
 public class BudgetController {
 
     private final BudgetService budgetService;
@@ -34,6 +39,7 @@ public class BudgetController {
     }
 
     @GetMapping
+    @Operation(summary = "Lista os orcamentos do mes de referencia (yyyy-MM).")
     public List<BudgetResponse> list(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM") YearMonth ref) {
@@ -41,6 +47,7 @@ public class BudgetController {
     }
 
     @PostMapping
+    @Operation(summary = "Cria um orcamento para uma categoria em um mes.")
     public ResponseEntity<BudgetResponse> create(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @Valid @RequestBody BudgetRequest request) {
@@ -52,6 +59,7 @@ public class BudgetController {
     }
 
     @PutMapping("/{id}")
+    @Operation(summary = "Atualiza o valor de um orcamento existente.")
     public ResponseEntity<BudgetResponse> update(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable UUID id,

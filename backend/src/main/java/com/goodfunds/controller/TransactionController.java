@@ -6,6 +6,9 @@ import com.goodfunds.dto.TransactionRequest;
 import com.goodfunds.dto.TransactionResponse;
 import com.goodfunds.security.AuthenticatedUser;
 import com.goodfunds.service.TransactionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +36,8 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/transactions")
+@Tag(name = "Transacoes", description = "Lancamentos financeiros: busca paginada com filtros, criacao, edicao e exclusao.")
+@SecurityRequirement(name = "bearerAuth")
 public class TransactionController {
 
     private final TransactionService transactionService;
@@ -42,6 +47,7 @@ public class TransactionController {
     }
 
     @GetMapping
+    @Operation(summary = "Busca paginada de transacoes com filtros por mes, categoria, tipo e periodo.")
     public Page<TransactionResponse> list(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth ref,
@@ -54,6 +60,7 @@ public class TransactionController {
     }
 
     @PostMapping
+    @Operation(summary = "Cria uma nova transacao.")
     public ResponseEntity<TransactionResponse> create(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @Valid @RequestBody TransactionRequest request) {
@@ -65,6 +72,7 @@ public class TransactionController {
     }
 
     @PutMapping("/{id}")
+    @Operation(summary = "Atualiza uma transacao existente.")
     public ResponseEntity<TransactionResponse> update(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable UUID id,
@@ -73,6 +81,7 @@ public class TransactionController {
     }
 
     @PatchMapping("/{id}/category")
+    @Operation(summary = "Reclassifica a categoria de uma transacao.")
     public ResponseEntity<TransactionResponse> updateCategory(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable UUID id,
@@ -81,6 +90,7 @@ public class TransactionController {
     }
 
     @DeleteMapping("/{id}")
+    @Operation(summary = "Remove uma transacao.")
     public ResponseEntity<Void> delete(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable UUID id) {
