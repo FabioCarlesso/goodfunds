@@ -90,6 +90,8 @@ O cliente HTTP fica em `src/api/http.ts`:
 - **Response interceptor:** em respostas `401`, limpa o token e redireciona para `/login`.
 - **Erros:** `src/api/errors.ts` traduz o `ProblemDetail` (RFC 7807) do backend em mensagem amigavel para as telas.
 
+> **CORS:** o frontend (`:5173`) e o backend (`:8080`) ficam em origens distintas. O backend libera `http://localhost:5173` por padrao (`APP_CORS_ALLOWED_ORIGINS`). Se o login retornar "Nao foi possivel conectar ao servidor" com o backend no ar, verifique se a origem do frontend esta nessa lista.
+
 ## Testes
 
 Vitest + React Testing Library, ambiente `jsdom`. Arquivos `*.test.ts(x)` ao lado do codigo testado.
