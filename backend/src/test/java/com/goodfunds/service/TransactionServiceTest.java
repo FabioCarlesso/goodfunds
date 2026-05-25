@@ -48,6 +48,7 @@ class TransactionServiceTest {
     @Mock private TransactionRepository transactionRepository;
     @Mock private CategoryRepository categoryRepository;
     @Mock private UserRepository userRepository;
+    @Mock private ReportCacheService reportCacheService;
 
     @InjectMocks
     private TransactionService transactionService;

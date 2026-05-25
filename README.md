@@ -94,7 +94,7 @@ Documentos de contexto e planejamento:
 
 ## Stack
 
-- Backend: Java 17, Spring Boot 3, Maven, JPA/Hibernate, Spring Security, Flyway, Actuator.
+- Backend: Java 17, Spring Boot 3, Maven, JPA/Hibernate, Spring Security, Flyway, Actuator, Caffeine (cache de relatorios).
 - Banco: PostgreSQL planejado para dev/prod e H2 in-memory no bootstrap/testes.
 - Frontend planejado: Vite, React, TypeScript e Tailwind.
 - Documentacao de API planejada: Swagger/OpenAPI.

@@ -266,9 +266,13 @@ Body de `POST/PUT`: `{ "limite": 500.00, "categoryId": "<uuid>", "mes": 5, "ano"
 
 ## Cache
 
-- **Caffeine Cache** aplicado nos endpoints de `/reports/*`.
-- Invalidação automática ao criar, editar ou remover uma `Transaction` ou `Budget`.
-- Configuração em `com.goodfunds.config`.
+Cache **Caffeine** aplicado aos relatórios (`/reports/*`), implementado na issue #23. Relatórios são leitura intensiva e recalculam agregações sobre transações e orçamentos a cada chamada; o cache evita reexecutar essas consultas enquanto os dados do usuário não mudam.
+
+- **Configuração:** `com.goodfunds.config.CacheConfig` (`@EnableCaching` + `CaffeineCacheManager`). Quatro caches, um por endpoint: `reportsSummary`, `reportsByCategory`, `reportsEvolution`, `reportsEstimate`. Política: `expireAfterWrite = 10min` e `maximumSize = 1000` por cache.
+- **Onde:** `@Cacheable` nos métodos de serviço `ReportService.summary/byCategory/evolution` e `EstimateService.estimate`.
+- **Chave por usuário:** todas as chaves começam com `"<userId>::..."` (ex.: `summary` → `"<userId>::<ref>"`, `estimate` → `"<userId>::estimate"`), garantindo isolamento entre usuários no cache.
+- **Invalidação por usuário:** `com.goodfunds.service.ReportCacheService.evictUser(userId)` remove apenas as entradas do usuário (varre as chaves do cache nativo Caffeine pelo prefixo `"<userId>::"`), sem descartar o cache dos demais. É acionada ao criar, editar ou remover uma `Transaction` (`TransactionService`) ou `Budget` (`BudgetService`), e ao processar uma fatura que gera/remove transações (`InvoiceProcessingService`).
+- **`expireAfterWrite` como rede de segurança:** garante o recálculo de entradas dependentes do "mês corrente" (ex.: `summary` sem `ref` e `estimate`) após a virada do mês, mesmo sem escrita.
 
 ---
 
@@ -344,6 +348,8 @@ Os testes usam o perfil `test` com H2 in-memory (não requerem PostgreSQL).
 | spring-boot-starter-data-jpa | 3.3.4 | Persistência |
 | spring-boot-starter-validation | 3.3.4 | Bean Validation |
 | spring-boot-starter-actuator | 3.3.4 | Observabilidade |
+| spring-boot-starter-cache | 3.3.4 | Abstração de cache (`@Cacheable`/`@EnableCaching`) |
+| caffeine | gerenciado pelo BOM | Cache em memória dos relatórios `/reports/*` |
 | flyway-core + flyway-database-postgresql | 3.3.4 | Migrations |
 | postgresql | runtime | Driver PostgreSQL |
 | h2 | runtime | Banco in-memory para testes |

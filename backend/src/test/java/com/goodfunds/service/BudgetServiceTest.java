@@ -38,6 +38,7 @@ class BudgetServiceTest {
     @Mock private BudgetRepository budgetRepository;
     @Mock private CategoryRepository categoryRepository;
     @Mock private UserRepository userRepository;
+    @Mock private ReportCacheService reportCacheService;
 
     @InjectMocks
     private BudgetService budgetService;

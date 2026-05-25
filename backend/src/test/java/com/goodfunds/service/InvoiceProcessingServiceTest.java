@@ -52,6 +52,7 @@ class InvoiceProcessingServiceTest {
     @Mock private InvoiceParserFactory parserFactory;
     @Mock private InvoiceParser parser;
     @Mock private CategorySuggestionService categorySuggestionService;
+    @Mock private ReportCacheService reportCacheService;
 
     private InvoiceProcessingService service;
 
@@ -64,7 +65,7 @@ class InvoiceProcessingServiceTest {
         InvoiceUploadProperties properties = new InvoiceUploadProperties();
         service = new InvoiceProcessingService(
                 invoiceRepository, transactionRepository, categoryRepository,
-                parserFactory, properties, categorySuggestionService);
+                parserFactory, properties, categorySuggestionService, reportCacheService);
 
         owner = User.builder()
                 .id(UUID.randomUUID())

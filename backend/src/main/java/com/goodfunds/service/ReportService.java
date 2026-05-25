@@ -11,8 +11,10 @@ import com.goodfunds.repository.CategoryRepository;
 import com.goodfunds.repository.TransactionRepository;
 import com.goodfunds.repository.projection.CategoryAmount;
 import com.goodfunds.repository.projection.MonthAmount;
+import com.goodfunds.config.CacheConfig;
 import com.goodfunds.repository.projection.TipoAmount;
 import com.goodfunds.util.MoneyUtils;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,6 +57,7 @@ public class ReportService {
         this.clock = clock;
     }
 
+    @Cacheable(cacheNames = CacheConfig.REPORTS_SUMMARY, key = "#userId.toString() + '::' + #ref")
     @Transactional(readOnly = true)
     public SummaryResponse summary(UUID userId, YearMonth ref) {
         if (ref == null) {
@@ -96,6 +99,7 @@ public class ReportService {
                 .divide(orcado, 2, RoundingMode.HALF_UP);
     }
 
+    @Cacheable(cacheNames = CacheConfig.REPORTS_BY_CATEGORY, key = "#userId.toString() + '::' + #ref")
     @Transactional(readOnly = true)
     public List<ByCategoryItem> byCategory(UUID userId, YearMonth ref) {
         LocalDate start = ref.atDay(1);
@@ -116,6 +120,7 @@ public class ReportService {
                 .toList();
     }
 
+    @Cacheable(cacheNames = CacheConfig.REPORTS_EVOLUTION, key = "#userId.toString() + '::' + #from + '::' + #to")
     @Transactional(readOnly = true)
     public List<MonthlyEntry> evolution(UUID userId, YearMonth from, YearMonth to) {
         if (from.isAfter(to)) {

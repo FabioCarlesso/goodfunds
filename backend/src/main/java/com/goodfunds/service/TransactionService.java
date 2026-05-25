@@ -35,13 +35,16 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final ReportCacheService reportCacheService;
 
     public TransactionService(TransactionRepository transactionRepository,
                               CategoryRepository categoryRepository,
-                              UserRepository userRepository) {
+                              UserRepository userRepository,
+                              ReportCacheService reportCacheService) {
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
+        this.reportCacheService = reportCacheService;
     }
 
     @Transactional(readOnly = true)
@@ -82,6 +85,7 @@ public class TransactionService {
                 .build();
 
         Transaction saved = transactionRepository.saveAndFlush(transaction);
+        reportCacheService.evictUser(userId);
         return TransactionResponse.from(saved);
     }
 
@@ -101,6 +105,7 @@ public class TransactionService {
         // saveAndFlush garante que @UpdateTimestamp seja aplicado antes de mapear a resposta,
         // evitando devolver um updatedAt obsoleto ao cliente.
         Transaction saved = transactionRepository.saveAndFlush(transaction);
+        reportCacheService.evictUser(userId);
         return TransactionResponse.from(saved);
     }
 
@@ -115,6 +120,7 @@ public class TransactionService {
         // saveAndFlush garante que @UpdateTimestamp seja aplicado antes de mapear a resposta,
         // refletindo o updatedAt renovado da recategorizacao.
         Transaction saved = transactionRepository.saveAndFlush(transaction);
+        reportCacheService.evictUser(userId);
         return TransactionResponse.from(saved);
     }
 
@@ -123,6 +129,7 @@ public class TransactionService {
         Transaction transaction = transactionRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new TransactionNotFoundException(id));
         transactionRepository.delete(transaction);
+        reportCacheService.evictUser(userId);
     }
 
     private void validateDateFilters(YearMonth ref, LocalDate from, LocalDate to) {
