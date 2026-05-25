@@ -2,7 +2,7 @@
 
 ## Estado atual
 
-O frontend ainda não foi implementado. Ele está planejado para a **Sprint 4** do MVP, após os endpoints do backend estarem completos e testados. Este documento descreve a arquitetura planejada, as decisões já tomadas e o escopo de implementação esperado.
+O **scaffold** do frontend foi criado em `frontend/` (issue #24): projeto Vite + React + TypeScript com Tailwind configurado, cliente HTTP (Axios) com interceptor `Authorization: Bearer`, estrutura de pastas base (`src/api`, `src/components`, `src/pages`, `src/hooks`, `src/lib`) e testes com Vitest + React Testing Library. As telas descritas abaixo ainda serão implementadas nas próximas atividades da **Sprint 4**. Este documento descreve a arquitetura planejada e o escopo de implementação esperado.
 
 ---
 
@@ -190,7 +190,7 @@ Rota sem autenticação → redireciona para /login
 
 ## Próximos passos
 
-1. Criar scaffold Vite + React + TypeScript + Tailwind em `frontend/`.
+1. ~~Criar scaffold Vite + React + TypeScript + Tailwind em `frontend/`.~~ (concluído — issue #24)
 2. Configurar React Router e estrutura de rotas.
 3. Implementar `AuthContext` e tela de Login/Cadastro consumindo `/auth/*`.
 4. Implementar tela Dashboard consumindo `/reports/summary` e `/reports/by-category`.
