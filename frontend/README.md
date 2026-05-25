@@ -90,7 +90,7 @@ O cliente HTTP fica em `src/api/http.ts`:
 - **Response interceptor:** em respostas `401`, limpa o token e redireciona para `/login`.
 - **Erros:** `src/api/errors.ts` traduz o `ProblemDetail` (RFC 7807) do backend em mensagem amigavel para as telas.
 
-> **CORS:** o frontend (`:5173`) e o backend (`:8080`) ficam em origens distintas. O backend libera `http://localhost:5173` por padrao (`APP_CORS_ALLOWED_ORIGINS`). Se o login retornar "Nao foi possivel conectar ao servidor" com o backend no ar, verifique se a origem do frontend esta nessa lista.
+> **CORS:** o frontend (`:5173`) e o backend (`:8080`) ficam em origens distintas. O backend libera `http://localhost:5173` por padrao (`APP_CORS_ALLOWED_ORIGINS`). O dev server usa `strictPort` (sempre `:5173`) para a origem casar com o CORS — se a `5173` estiver ocupada, o `npm run dev` falha em vez de pular para `5174` (o que geraria erro de CORS por origem nao permitida). Se o login retornar "Nao foi possivel conectar ao servidor" com o backend no ar, confirme que o frontend esta em `:5173` e que essa origem esta em `APP_CORS_ALLOWED_ORIGINS`.
 
 ## Testes
 
