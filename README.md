@@ -4,13 +4,14 @@ Goodfunds e um sistema de controle financeiro pessoal para uso proprio. O MVP co
 
 ## Estado atual
 
-O repositorio esta na Sprint 1. O backend Spring Boot ja foi criado em `backend/`, com profiles `dev`, `test` e `prod`, migrations Flyway, autenticacao JWT, CRUDs de categorias/transacoes/orcamentos e upload autenticado de faturas PDF. O Docker Compose basico (app + postgres) ja esta disponivel (issue #11). O frontend ainda sera implementado.
+O repositorio esta na Sprint 1. O backend Spring Boot ja foi criado em `backend/`, com profiles `dev`, `test` e `prod`, migrations Flyway, autenticacao JWT, CRUDs de categorias/transacoes/orcamentos e upload autenticado de faturas PDF. O Docker Compose basico (app + postgres) ja esta disponivel (issue #11). O scaffold do frontend (Vite + React + TypeScript + Tailwind) ja foi criado em `frontend/` (issue #24); as telas serao implementadas nas proximas atividades.
 
 ## Estrutura
 
 ```text
 goodfunds/
 ├── backend/                  # Backend Spring Boot 3 + Maven (com Dockerfile)
+├── frontend/                 # Frontend Vite + React + TypeScript + Tailwind
 ├── docs/                     # Contextos e planejamento
 ├── docker-compose.yml        # Stack local: app + postgres
 ├── .env.example              # Template das variaveis de ambiente do compose
@@ -43,6 +44,24 @@ Testar:
 cd backend
 ./mvnw verify
 ```
+
+## Frontend
+
+SPA em Vite + React + TypeScript + Tailwind em `frontend/`. Consome a API REST do backend.
+
+Requisitos:
+
+- Node.js 20+ e npm 10+
+
+Executar:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+O dev server sobe em `http://localhost:5173`. Detalhes de scripts, variaveis de ambiente e estrutura em `frontend/README.md`.
 
 ## Docker Compose
 
@@ -96,5 +115,5 @@ Documentos de contexto e planejamento:
 
 - Backend: Java 17, Spring Boot 3, Maven, JPA/Hibernate, Spring Security, Flyway, Actuator, Caffeine (cache de relatorios).
 - Banco: PostgreSQL planejado para dev/prod e H2 in-memory no bootstrap/testes.
-- Frontend planejado: Vite, React, TypeScript e Tailwind.
+- Frontend: Vite, React, TypeScript, Tailwind CSS, Axios; testes com Vitest + React Testing Library.
 - Documentacao de API planejada: Swagger/OpenAPI.
