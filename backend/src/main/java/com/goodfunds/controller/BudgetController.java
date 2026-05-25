@@ -1,5 +1,6 @@
 package com.goodfunds.controller;
 
+import com.goodfunds.config.OpenApiConfig;
 import com.goodfunds.dto.BudgetRequest;
 import com.goodfunds.dto.BudgetResponse;
 import com.goodfunds.security.AuthenticatedUser;
@@ -29,7 +30,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/budgets")
 @Tag(name = "Orcamentos", description = "Planejamento financeiro: orcamentos mensais por categoria.")
-@SecurityRequirement(name = "bearerAuth")
+@SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME_NAME)
 public class BudgetController {
 
     private final BudgetService budgetService;

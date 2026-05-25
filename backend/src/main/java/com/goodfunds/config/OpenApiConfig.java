@@ -24,7 +24,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OpenApiConfig {
 
-    static final String BEARER_SCHEME_NAME = "bearerAuth";
+    /** Nome do esquema de seguranca; referenciado pelos controllers em {@code @SecurityRequirement}. */
+    public static final String BEARER_SCHEME_NAME = "bearerAuth";
 
     @Bean
     public OpenAPI goodfundsOpenAPI() {
@@ -36,7 +37,6 @@ public class OpenApiConfig {
                         .version("v1"))
                 .components(new Components()
                         .addSecuritySchemes(BEARER_SCHEME_NAME, new SecurityScheme()
-                                .name(BEARER_SCHEME_NAME)
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")

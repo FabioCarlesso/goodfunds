@@ -1,5 +1,6 @@
 package com.goodfunds.controller;
 
+import com.goodfunds.config.OpenApiConfig;
 import com.goodfunds.domain.TipoCategoria;
 import com.goodfunds.dto.TransactionCategoryRequest;
 import com.goodfunds.dto.TransactionRequest;
@@ -37,7 +38,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/transactions")
 @Tag(name = "Transacoes", description = "Lancamentos financeiros: busca paginada com filtros, criacao, edicao e exclusao.")
-@SecurityRequirement(name = "bearerAuth")
+@SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME_NAME)
 public class TransactionController {
 
     private final TransactionService transactionService;

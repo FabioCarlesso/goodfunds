@@ -48,7 +48,7 @@ class OpenApiDocsIntegrationTest {
     }
 
     @Test
-    void swaggerUi_isPubliclyAccessibleInDev() throws Exception {
+    void swaggerUi_isPubliclyAccessible() throws Exception {
         mockMvc.perform(get("/swagger-ui/index.html"))
                 .andExpect(status().isOk());
     }

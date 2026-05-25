@@ -1,5 +1,6 @@
 package com.goodfunds.controller;
 
+import com.goodfunds.config.OpenApiConfig;
 import com.goodfunds.domain.OrigemFatura;
 import com.goodfunds.dto.InvoiceResponse;
 import com.goodfunds.security.AuthenticatedUser;
@@ -22,7 +23,7 @@ import java.net.URI;
 @RestController
 @RequestMapping("/invoices")
 @Tag(name = "Faturas", description = "Upload de faturas em PDF para extracao de lancamentos.")
-@SecurityRequirement(name = "bearerAuth")
+@SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME_NAME)
 public class InvoiceController {
 
     private final InvoiceService invoiceService;

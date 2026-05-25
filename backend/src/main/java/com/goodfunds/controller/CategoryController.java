@@ -1,5 +1,6 @@
 package com.goodfunds.controller;
 
+import com.goodfunds.config.OpenApiConfig;
 import com.goodfunds.domain.TipoCategoria;
 import com.goodfunds.dto.CategoryRequest;
 import com.goodfunds.dto.CategoryResponse;
@@ -29,7 +30,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/categories")
 @Tag(name = "Categorias", description = "CRUD de categorias de receitas e despesas do usuario.")
-@SecurityRequirement(name = "bearerAuth")
+@SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME_NAME)
 public class CategoryController {
 
     private final CategoryService categoryService;

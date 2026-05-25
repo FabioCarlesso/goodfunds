@@ -1,5 +1,6 @@
 package com.goodfunds.controller;
 
+import com.goodfunds.config.OpenApiConfig;
 import com.goodfunds.dto.ByCategoryItem;
 import com.goodfunds.dto.EstimateResponse;
 import com.goodfunds.dto.MonthlyEntry;
@@ -23,7 +24,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/reports")
 @Tag(name = "Relatorios", description = "Resumos, estimativas, gastos por categoria e evolucao mensal.")
-@SecurityRequirement(name = "bearerAuth")
+@SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME_NAME)
 public class ReportController {
 
     private final EstimateService estimateService;
