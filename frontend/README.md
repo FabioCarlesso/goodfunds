@@ -1,6 +1,6 @@
 # Goodfunds — Frontend
 
-SPA do Goodfunds construida com **Vite + React + TypeScript + Tailwind CSS**, com roteamento via **React Router**. Consome a API REST do backend (`../backend`).
+SPA do Goodfunds construida com **Vite + React + TypeScript + Tailwind CSS**, com roteamento via **React Router** e graficos com **Recharts**. Consome a API REST do backend (`../backend`).
 
 ## Requisitos
 
@@ -41,11 +41,11 @@ frontend/
 ├── public/              # Arquivos estaticos servidos como estao
 ├── src/
 │   ├── api/             # Cliente HTTP (axios), chamadas a API e parsing de erros
-│   ├── components/      # Componentes reutilizaveis (RequireAuth, ui/)
+│   ├── components/      # Componentes reutilizaveis (RequireAuth, ui/, layout/)
 │   ├── contexts/        # Context API (AuthProvider / AuthContext)
 │   ├── pages/           # Telas da aplicacao (uma por rota)
 │   ├── hooks/           # Custom hooks React (useAuth, useAuthToken)
-│   ├── lib/             # Utilitarios e config (env, token de auth)
+│   ├── lib/             # Utilitarios e config (env, token de auth, format)
 │   ├── types/           # Interfaces dos contratos da API
 │   ├── test/            # Setup dos testes (Vitest + Testing Library)
 │   ├── App.tsx          # Componente raiz: providers + rotas
@@ -62,12 +62,29 @@ O roteamento (React Router) fica em `src/App.tsx`:
 
 | Rota | Acesso | Tela |
 |---|---|---|
-| `/login` | Publica (redireciona p/ `/` se autenticado) | `LoginPage` |
-| `/register` | Publica (redireciona p/ `/` se autenticado) | `RegisterPage` |
-| `/` | Protegida (`<RequireAuth>`) | `HomePage` (placeholder do Dashboard) |
+| `/login` | Publica (redireciona p/ `/dashboard` se autenticado) | `LoginPage` |
+| `/register` | Publica (redireciona p/ `/dashboard` se autenticado) | `RegisterPage` |
+| `/` | Protegida (`<RequireAuth>` + `AppLayout`) | redireciona para `/dashboard` |
+| `/dashboard` | Protegida | `DashboardPage` |
+| `/faturas` | Protegida | `InvoicesPage` |
+| `/faturas/:id` | Protegida | `InvoiceDetailPage` |
+| `/planejamento` | Protegida | `PlanningPage` |
+| `/relatorios` | Protegida | `ReportsPage` |
 | `*` | — | redireciona para `/` |
 
-`<RequireAuth>` (`src/components/RequireAuth.tsx`) bloqueia rotas autenticadas: sem JWT, redireciona para `/login` guardando a rota de origem para retorno apos o login.
+`<RequireAuth>` (`src/components/RequireAuth.tsx`) bloqueia rotas autenticadas: sem JWT, redireciona para `/login` guardando a rota de origem para retorno apos o login. As rotas protegidas compartilham o `AppLayout` (`src/components/layout/`), com o menu lateral de navegacao e o botao de logout.
+
+## Telas MVP (issue #26)
+
+| Tela | Rota | Endpoints consumidos |
+|---|---|---|
+| **Dashboard** | `/dashboard` | `GET /reports/summary` — cartoes de saldo/receitas/despesas/orcamento e grafico de receitas vs despesas, com seletor de mes |
+| **Faturas** | `/faturas` | `GET /invoices` (lista), `POST /invoices/upload` (upload de PDF) |
+| **Detalhe da fatura** | `/faturas/:id` | `GET /invoices/{id}` — metadados e transacoes geradas |
+| **Planejamento** | `/planejamento` | `GET/POST/PUT /budgets`, `GET /categories`, `GET /reports/by-category` (gasto vs limite por categoria) |
+| **Relatorios** | `/relatorios` | `GET /reports/evolution` (evolucao mensal) e `GET /reports/by-category` (gastos por categoria) |
+
+> **Dependencias de backend pendentes:** as telas de Faturas consomem `GET /invoices` e `GET /invoices/{id}` conforme o contrato planejado em `docs/goodfunds-planejamento.md`, mas hoje o backend so expoe `POST /invoices/upload`. Enquanto esses endpoints nao existem, a listagem e o detalhe exibem o estado de erro. O upload e as demais telas (Dashboard, Planejamento, Relatorios) funcionam contra a API atual. O recurso de orcamentos nao possui `DELETE` no backend, entao o Planejamento cobre criacao e edicao (sem exclusao).
 
 ## Autenticacao
 

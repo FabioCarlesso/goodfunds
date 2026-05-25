@@ -4,7 +4,11 @@
 
 O **scaffold** do frontend foi criado em `frontend/` (issue #24): projeto Vite + React + TypeScript com Tailwind configurado, cliente HTTP (Axios) com interceptor `Authorization: Bearer`, estrutura de pastas base (`src/api`, `src/components`, `src/pages`, `src/hooks`, `src/lib`) e testes com Vitest + React Testing Library.
 
-O **fluxo de autenticação** foi implementado (issue #25): roteamento com React Router em `src/App.tsx`, telas `/login` e `/register` (`src/pages/`) consumindo `/auth/*`, `AuthContext` (`src/contexts/`) com persistência do JWT em `localStorage` via `useAuth()`, rota protegida por `<RequireAuth>` (`src/components/`) que redireciona para `/login`, e logout que limpa o token. As demais telas descritas abaixo ainda serão implementadas nas próximas atividades da **Sprint 4**.
+O **fluxo de autenticação** foi implementado (issue #25): roteamento com React Router em `src/App.tsx`, telas `/login` e `/register` (`src/pages/`) consumindo `/auth/*`, `AuthContext` (`src/contexts/`) com persistência do JWT em `localStorage` via `useAuth()`, rota protegida por `<RequireAuth>` (`src/components/`) que redireciona para `/login`, e logout que limpa o token.
+
+As **telas MVP** foram implementadas (issue #26): Dashboard (`/dashboard`), Faturas (`/faturas`) com upload e detalhe (`/faturas/:id`), Planejamento (`/planejamento`) e Relatórios (`/relatorios`). As rotas protegidas compartilham o `AppLayout` (`src/components/layout/`) com **menu lateral** de navegação; os gráficos usam **Recharts**. As rotas seguem nomes em português conforme os critérios de aceite da issue #26. A tela de transações (CRUD manual) e o serviço `frontend` no Docker Compose seguem como próximos passos.
+
+> **Pendências de backend:** as telas de Faturas consomem `GET /invoices` e `GET /invoices/{id}` (lista e detalhe com transações geradas), previstos em `goodfunds-planejamento.md` mas ainda não expostos pelo backend (hoje só existe `POST /invoices/upload`). O recurso de orçamentos não possui `DELETE`, então o Planejamento cobre criação e edição.
 
 ---
 
@@ -202,10 +206,10 @@ Rota sem autenticação → redireciona para /login
 1. ~~Criar scaffold Vite + React + TypeScript + Tailwind em `frontend/`.~~ (concluído — issue #24)
 2. ~~Configurar React Router e estrutura de rotas.~~ (concluído — issue #25)
 3. ~~Implementar `AuthContext` e tela de Login/Cadastro consumindo `/auth/*`.~~ (concluído — issue #25)
-4. Implementar tela Dashboard consumindo `/reports/summary` e `/reports/by-category`.
-5. Implementar CRUD de transações consumindo `/transactions` e `/categories`.
-6. Implementar upload e listagem de faturas consumindo `/invoices/*`.
-7. Implementar planejamento consumindo `/budgets`.
-8. Implementar relatórios consumindo `/reports/evolution` e `/reports/estimate`.
-9. Configurar Docker Compose com serviço `frontend` (build Vite + Nginx).
-10. Implementar testes com Vitest + React Testing Library para os componentes críticos.
+4. ~~Implementar tela Dashboard consumindo `/reports/summary`.~~ (concluído — issue #26)
+5. ~~Implementar upload e listagem de faturas consumindo `/invoices/*`.~~ (concluído — issue #26; lista/detalhe dependem dos endpoints `GET /invoices` e `GET /invoices/{id}` no backend)
+6. ~~Implementar planejamento consumindo `/budgets`.~~ (concluído — issue #26)
+7. ~~Implementar relatórios consumindo `/reports/evolution` e `/reports/by-category`.~~ (concluído — issue #26)
+8. Implementar CRUD de transações consumindo `/transactions` e `/categories`.
+9. Expor no backend `GET /invoices` e `GET /invoices/{id}` para a listagem e o detalhe de faturas.
+10. Configurar Docker Compose com serviço `frontend` (build Vite + Nginx).
