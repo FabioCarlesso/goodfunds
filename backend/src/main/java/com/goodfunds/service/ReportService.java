@@ -147,7 +147,8 @@ public class ReportService {
             entries.add(new MonthlyEntry(current, r, d));
             current = current.plusMonths(1);
         }
-        return entries;
+        // Lista imutavel: o valor fica em cache e e compartilhado entre requests.
+        return List.copyOf(entries);
     }
 
     private static Map<YearMonth, BigDecimal> toYearMonthMap(List<MonthAmount> amounts, TipoCategoria tipo) {

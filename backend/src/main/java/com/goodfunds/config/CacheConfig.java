@@ -6,6 +6,7 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 
 import java.time.Duration;
 import java.util.List;
@@ -22,9 +23,13 @@ import java.util.List;
  * <p>O {@code expireAfterWrite} funciona como rede de seguranca: garante que
  * entradas dependentes do "mes corrente" (ex.: {@code summary} sem {@code ref} e
  * {@code estimate}) sejam recalculadas apos a virada do mes, mesmo sem escrita.</p>
+ *
+ * <p>O interceptor de cache e ordenado antes do de transacao ({@code order} mais alto que
+ * o padrao do {@code @Transactional}): assim, num cache hit a leitura retorna sem sequer
+ * abrir a transacao read-only nem tomar uma conexao do pool.</p>
  */
 @Configuration
-@EnableCaching
+@EnableCaching(order = Ordered.LOWEST_PRECEDENCE - 1)
 public class CacheConfig {
 
     /** Cache de {@code GET /reports/summary}. */

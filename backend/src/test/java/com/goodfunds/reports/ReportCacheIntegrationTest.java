@@ -27,6 +27,7 @@ import java.time.LocalDate;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -136,6 +137,28 @@ class ReportCacheIntegrationTest {
         getSummary(otherToken).andExpect(jsonPath("$.despesas").value(0.0));
     }
 
+    @Test
+    void summary_updateCategoryTipoViaApi_invalidatesCache() throws Exception {
+        persistTransaction(owner, ownerDespesa, "100.00", LocalDate.of(2026, 5, 5));
+
+        // Primeira leitura popula o cache: a transacao conta como despesa.
+        getSummary(ownerToken)
+                .andExpect(jsonPath("$.despesas").value(100.00))
+                .andExpect(jsonPath("$.receitas").value(0.0));
+
+        // Troca o tipo da categoria DESPESA -> RECEITA via API.
+        mockMvc.perform(put("/categories/" + ownerDespesa.getId())
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(categoryJson("Alimentacao", TipoCategoria.RECEITA)))
+                .andExpect(status().isOk());
+
+        // Cache invalidado pela edicao da categoria: a mesma transacao agora conta como receita.
+        getSummary(ownerToken)
+                .andExpect(jsonPath("$.despesas").value(0.0))
+                .andExpect(jsonPath("$.receitas").value(100.00));
+    }
+
     private org.springframework.test.web.servlet.ResultActions getSummary(String token) throws Exception {
         return mockMvc.perform(get("/reports/summary")
                         .param("ref", "2026-05")
@@ -153,6 +176,15 @@ class ReportCacheIntegrationTest {
                   "categoryId": "%s"
                 }
                 """.formatted(valor, data, category.getId());
+    }
+
+    private String categoryJson(String nome, TipoCategoria tipo) {
+        return """
+                {
+                  "nome": "%s",
+                  "tipo": "%s"
+                }
+                """.formatted(nome, tipo);
     }
 
     private Category persistCategory(User user, String nome, TipoCategoria tipo) {
