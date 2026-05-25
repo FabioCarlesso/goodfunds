@@ -1,10 +1,14 @@
 package com.goodfunds.controller;
 
+import com.goodfunds.config.OpenApiConfig;
 import com.goodfunds.domain.TipoCategoria;
 import com.goodfunds.dto.CategoryRequest;
 import com.goodfunds.dto.CategoryResponse;
 import com.goodfunds.security.AuthenticatedUser;
 import com.goodfunds.service.CategoryService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,6 +29,8 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/categories")
+@Tag(name = "Categorias", description = "CRUD de categorias de receitas e despesas do usuario.")
+@SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME_NAME)
 public class CategoryController {
 
     private final CategoryService categoryService;
@@ -34,6 +40,7 @@ public class CategoryController {
     }
 
     @GetMapping
+    @Operation(summary = "Lista as categorias do usuario, opcionalmente filtrando por tipo.")
     public List<CategoryResponse> list(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(required = false) TipoCategoria tipo) {
@@ -41,6 +48,7 @@ public class CategoryController {
     }
 
     @PostMapping
+    @Operation(summary = "Cria uma nova categoria.")
     public ResponseEntity<CategoryResponse> create(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @Valid @RequestBody CategoryRequest request) {
@@ -52,6 +60,7 @@ public class CategoryController {
     }
 
     @PutMapping("/{id}")
+    @Operation(summary = "Atualiza uma categoria existente.")
     public ResponseEntity<CategoryResponse> update(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable UUID id,
@@ -60,6 +69,7 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{id}")
+    @Operation(summary = "Remove uma categoria que nao esteja em uso.")
     public ResponseEntity<Void> delete(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable UUID id) {

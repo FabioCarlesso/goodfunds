@@ -116,4 +116,4 @@ Documentos de contexto e planejamento:
 - Backend: Java 17, Spring Boot 3, Maven, JPA/Hibernate, Spring Security, Flyway, Actuator, Caffeine (cache de relatorios).
 - Banco: PostgreSQL planejado para dev/prod e H2 in-memory no bootstrap/testes.
 - Frontend: Vite, React, TypeScript, Tailwind CSS, React Router, Axios; testes com Vitest + React Testing Library.
-- Documentacao de API planejada: Swagger/OpenAPI.
+- Documentacao de API: Swagger/OpenAPI 3 via Springdoc. Swagger UI em `http://localhost:8080/swagger-ui.html` (habilitado em dev; desativado em prod).

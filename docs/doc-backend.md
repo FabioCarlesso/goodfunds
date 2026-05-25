@@ -311,6 +311,9 @@ Cache **Caffeine** aplicado aos relatórios (`/reports/*`), implementado na issu
 
 - Swagger UI disponível em `http://localhost:8080/swagger-ui.html` (via Springdoc OpenAPI 3 2.6.0).
 - Especificação OpenAPI em `http://localhost:8080/v3/api-docs`.
+- Os controllers são documentados com `@Tag` (agrupamento por recurso) e `@Operation` (resumo de cada endpoint).
+- O esquema de segurança `bearerAuth` (HTTP Bearer, formato JWT) é declarado em `config/OpenApiConfig`; o Swagger UI exibe o botão **Authorize** para informar o token. Os controllers protegidos referenciam o esquema via `@SecurityRequirement(name = "bearerAuth")`; `/auth/**` permanece público.
+- Swagger UI e `/v3/api-docs` ficam liberados no `SecurityConfig` e habilitados em **dev**; em **prod** são desativados (`springdoc.api-docs.enabled=false` e `springdoc.swagger-ui.enabled=false`) para não expor a superfície da API.
 
 ---
 

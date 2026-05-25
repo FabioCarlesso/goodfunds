@@ -14,3 +14,11 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
   expiration: 86400000
+
+# Swagger UI / OpenAPI ficam disponiveis em dev; em producao a especificacao e a UI
+# sao desativadas para nao expor a superficie da API publicamente.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
