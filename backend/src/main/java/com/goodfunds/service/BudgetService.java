@@ -24,13 +24,16 @@ public class BudgetService {
     private final BudgetRepository budgetRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final ReportCacheService reportCacheService;
 
     public BudgetService(BudgetRepository budgetRepository,
                          CategoryRepository categoryRepository,
-                         UserRepository userRepository) {
+                         UserRepository userRepository,
+                         ReportCacheService reportCacheService) {
         this.budgetRepository = budgetRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
+        this.reportCacheService = reportCacheService;
     }
 
     @Transactional(readOnly = true)
@@ -57,6 +60,7 @@ public class BudgetService {
                 .build();
 
         Budget saved = budgetRepository.saveAndFlush(budget);
+        reportCacheService.evictUser(userId);
         return BudgetResponse.from(saved);
     }
 
@@ -76,6 +80,7 @@ public class BudgetService {
         // saveAndFlush garante que @UpdateTimestamp seja aplicado antes de mapear a resposta,
         // evitando devolver um updatedAt obsoleto ao cliente.
         Budget saved = budgetRepository.saveAndFlush(budget);
+        reportCacheService.evictUser(userId);
         return BudgetResponse.from(saved);
     }
 

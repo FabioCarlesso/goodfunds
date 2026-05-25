@@ -6,8 +6,10 @@ import com.goodfunds.dto.EstimateResponse;
 import com.goodfunds.dto.EstimateTotals;
 import com.goodfunds.repository.CategoryRepository;
 import com.goodfunds.repository.TransactionRepository;
+import com.goodfunds.config.CacheConfig;
 import com.goodfunds.repository.projection.CategoryAmount;
 import com.goodfunds.util.MoneyUtils;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,6 +60,7 @@ public class EstimateService {
         this.clock = clock;
     }
 
+    @Cacheable(cacheNames = CacheConfig.REPORTS_ESTIMATE, key = "#userId.toString() + '::estimate'")
     @Transactional(readOnly = true)
     public EstimateResponse estimate(UUID userId) {
         LocalDate hoje = LocalDate.now(clock);

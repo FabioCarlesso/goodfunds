@@ -24,15 +24,18 @@ public class CategoryService {
     private final TransactionRepository transactionRepository;
     private final BudgetRepository budgetRepository;
     private final UserRepository userRepository;
+    private final ReportCacheService reportCacheService;
 
     public CategoryService(CategoryRepository categoryRepository,
                            TransactionRepository transactionRepository,
                            BudgetRepository budgetRepository,
-                           UserRepository userRepository) {
+                           UserRepository userRepository,
+                           ReportCacheService reportCacheService) {
         this.categoryRepository = categoryRepository;
         this.transactionRepository = transactionRepository;
         this.budgetRepository = budgetRepository;
         this.userRepository = userRepository;
+        this.reportCacheService = reportCacheService;
     }
 
     @Transactional(readOnly = true)
@@ -52,6 +55,8 @@ public class CategoryService {
                 .user(userRef)
                 .build();
         Category saved = categoryRepository.save(category);
+        // Sem invalidacao: uma categoria recem-criada nao tem transacoes, entao nao aparece
+        // em nenhum relatorio cacheado (summary/by-category/estimate filtram por lancamento).
         return CategoryResponse.from(saved);
     }
 
@@ -64,6 +69,9 @@ public class CategoryService {
         category.setTipo(request.tipo());
 
         Category saved = categoryRepository.save(category);
+        // Renomear ou trocar o tipo (DESPESA<->RECEITA) altera summary/by-category/estimate;
+        // invalida os relatorios cacheados do usuario.
+        reportCacheService.evictUser(userId);
         return CategoryResponse.from(saved);
     }
 
@@ -77,5 +85,6 @@ public class CategoryService {
         }
 
         categoryRepository.delete(category);
+        reportCacheService.evictUser(userId);
     }
 }

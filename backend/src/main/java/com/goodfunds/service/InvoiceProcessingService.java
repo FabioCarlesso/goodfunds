@@ -51,19 +51,22 @@ public class InvoiceProcessingService {
     private final InvoiceParserFactory parserFactory;
     private final InvoiceUploadProperties uploadProperties;
     private final CategorySuggestionService categorySuggestionService;
+    private final ReportCacheService reportCacheService;
 
     public InvoiceProcessingService(InvoiceRepository invoiceRepository,
                                     TransactionRepository transactionRepository,
                                     CategoryRepository categoryRepository,
                                     InvoiceParserFactory parserFactory,
                                     InvoiceUploadProperties uploadProperties,
-                                    CategorySuggestionService categorySuggestionService) {
+                                    CategorySuggestionService categorySuggestionService,
+                                    ReportCacheService reportCacheService) {
         this.invoiceRepository = invoiceRepository;
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.parserFactory = parserFactory;
         this.uploadProperties = uploadProperties;
         this.categorySuggestionService = categorySuggestionService;
+        this.reportCacheService = reportCacheService;
     }
 
     @Transactional
@@ -111,6 +114,9 @@ public class InvoiceProcessingService {
             invoice.setStatus(StatusFatura.ERRO);
         }
 
+        // O processamento pode ter criado ou removido transactions (inclusive na limpeza
+        // anterior ao marcar ERRO), entao invalida os relatorios cacheados do usuario.
+        reportCacheService.evictUser(userId);
         return InvoiceResponse.from(invoiceRepository.save(invoice));
     }
 

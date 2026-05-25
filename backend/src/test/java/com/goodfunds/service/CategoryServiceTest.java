@@ -36,6 +36,7 @@ class CategoryServiceTest {
     @Mock private TransactionRepository transactionRepository;
     @Mock private BudgetRepository budgetRepository;
     @Mock private UserRepository userRepository;
+    @Mock private ReportCacheService reportCacheService;
 
     @InjectMocks
     private CategoryService categoryService;
@@ -124,6 +125,7 @@ class CategoryServiceTest {
         assertThat(response.tipo()).isEqualTo(TipoCategoria.RECEITA);
         assertThat(category.getNome()).isEqualTo("Atualizada");
         assertThat(category.getTipo()).isEqualTo(TipoCategoria.RECEITA);
+        verify(reportCacheService).evictUser(user.getId());
     }
 
     @Test
@@ -139,6 +141,7 @@ class CategoryServiceTest {
                 .hasMessageContaining(id.toString());
 
         verify(categoryRepository, never()).save(any());
+        verify(reportCacheService, never()).evictUser(any());
     }
 
     @Test
@@ -154,6 +157,7 @@ class CategoryServiceTest {
         categoryService.delete(user.getId(), category.getId());
 
         verify(categoryRepository).delete(category);
+        verify(reportCacheService).evictUser(user.getId());
     }
 
     @Test
@@ -182,6 +186,7 @@ class CategoryServiceTest {
                 .hasMessageContaining(category.getId().toString());
 
         verify(categoryRepository, never()).delete(any(Category.class));
+        verify(reportCacheService, never()).evictUser(any());
     }
 
     @Test
