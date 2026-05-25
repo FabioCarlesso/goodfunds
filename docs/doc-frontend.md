@@ -2,7 +2,9 @@
 
 ## Estado atual
 
-O **scaffold** do frontend foi criado em `frontend/` (issue #24): projeto Vite + React + TypeScript com Tailwind configurado, cliente HTTP (Axios) com interceptor `Authorization: Bearer`, estrutura de pastas base (`src/api`, `src/components`, `src/pages`, `src/hooks`, `src/lib`) e testes com Vitest + React Testing Library. As telas descritas abaixo ainda serão implementadas nas próximas atividades da **Sprint 4**. Este documento descreve a arquitetura planejada e o escopo de implementação esperado.
+O **scaffold** do frontend foi criado em `frontend/` (issue #24): projeto Vite + React + TypeScript com Tailwind configurado, cliente HTTP (Axios) com interceptor `Authorization: Bearer`, estrutura de pastas base (`src/api`, `src/components`, `src/pages`, `src/hooks`, `src/lib`) e testes com Vitest + React Testing Library.
+
+O **fluxo de autenticação** foi implementado (issue #25): roteamento com React Router em `src/App.tsx`, telas `/login` e `/register` (`src/pages/`) consumindo `/auth/*`, `AuthContext` (`src/contexts/`) com persistência do JWT em `localStorage` via `useAuth()`, rota protegida por `<RequireAuth>` (`src/components/`) que redireciona para `/login`, e logout que limpa o token. As demais telas descritas abaixo ainda serão implementadas nas próximas atividades da **Sprint 4**.
 
 ---
 
@@ -55,18 +57,18 @@ frontend/
 
 ## Telas principais
 
-### Login (`/login`)
+### Login (`/login`) — implementada (issue #25)
 
-- Formulário com e-mail e senha.
+- Formulário controlado com e-mail e senha.
 - Chamada: `POST /auth/login`.
-- Em caso de sucesso: armazena o JWT e redireciona para o Dashboard.
-- Exibe mensagem de erro em credenciais inválidas.
+- Em caso de sucesso: armazena o JWT (via `AuthContext`) e redireciona para a rota de origem (ou Dashboard).
+- Exibe mensagem de erro em credenciais inválidas (traduzida do `ProblemDetail` do backend).
 
-### Cadastro (`/register`)
+### Cadastro (`/register`) — implementada (issue #25)
 
-- Formulário com nome, e-mail e senha.
+- Formulário controlado com nome, e-mail e senha (senha mínima de 8 caracteres, alinhada ao backend).
 - Chamada: `POST /auth/register`.
-- Cria conta e redireciona para Login.
+- Cria conta e redireciona para `/login` com mensagem de sucesso.
 
 ### Dashboard (`/`)
 
@@ -133,9 +135,9 @@ Rota sem autenticação → redireciona para /login
 
 ### Autenticação
 
-- O JWT retornado pelo login é armazenado no cliente (decisão a definir na sprint: `localStorage` ou `sessionStorage`).
+- O JWT retornado pelo login é armazenado em `localStorage` (decisão MVP — ver trade-off em `frontend/README.md`), isolado em `src/lib/auth-token.ts`.
 - Todas as requisições autenticadas incluem o header: `Authorization: Bearer <token>`.
-- Em caso de resposta 401, o usuário é redirecionado para `/login`.
+- Em caso de resposta 401, o token é limpo e o usuário é redirecionado para `/login`.
 
 ### Cliente HTTP
 
@@ -174,25 +176,32 @@ Rota sem autenticação → redireciona para /login
 
 ---
 
+## Decisões tomadas
+
+| Decisão | Escolha |
+|---|---|
+| Cliente HTTP | Axios com interceptors (`src/api/http.ts`) |
+| Persistência do JWT | `localStorage` isolado em `src/lib/auth-token.ts` (trade-off em `frontend/README.md`) |
+| Roteamento | React Router (`src/App.tsx`) |
+| Estado global de auth | Context API (`AuthContext` / `useAuth`) |
+| Estratégia de testes | Vitest + React Testing Library (`jsdom`) |
+| Gerenciamento de formulários | Formulários controlados nativos (`useState`) |
+| Biblioteca de componentes | Tailwind + primitivos próprios (`src/components/ui`) |
+
 ## Decisões pendentes
 
 | Decisão | Opções consideradas |
 |---|---|
-| Biblioteca de componentes | Tailwind + primitivos próprios, shadcn/ui, Radix UI |
-| Cliente HTTP | Axios, Fetch nativo com wrapper |
 | Gerenciamento de dados assíncronos | React Query (TanStack Query), SWR |
-| Persistência do JWT | `localStorage`, `sessionStorage`, cookie httpOnly |
 | Biblioteca de gráficos | Recharts, Chart.js, Nivo |
-| Estratégia de testes | Vitest + React Testing Library |
-| Gerenciamento de formulários | React Hook Form, formulários controlados nativos |
 
 ---
 
 ## Próximos passos
 
 1. ~~Criar scaffold Vite + React + TypeScript + Tailwind em `frontend/`.~~ (concluído — issue #24)
-2. Configurar React Router e estrutura de rotas.
-3. Implementar `AuthContext` e tela de Login/Cadastro consumindo `/auth/*`.
+2. ~~Configurar React Router e estrutura de rotas.~~ (concluído — issue #25)
+3. ~~Implementar `AuthContext` e tela de Login/Cadastro consumindo `/auth/*`.~~ (concluído — issue #25)
 4. Implementar tela Dashboard consumindo `/reports/summary` e `/reports/by-category`.
 5. Implementar CRUD de transações consumindo `/transactions` e `/categories`.
 6. Implementar upload e listagem de faturas consumindo `/invoices/*`.
