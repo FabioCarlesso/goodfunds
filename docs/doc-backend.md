@@ -228,6 +228,7 @@ Body de `POST/PUT`: `{ "limite": 500.00, "categoryId": "<uuid>", "mes": 5, "ano"
 | `SPRING_DATASOURCE_PASSWORD` | Senha do banco |
 | `JWT_SECRET` | Segredo para assinar tokens JWT |
 | `APP_UPLOADS_DIR` | Diretório onde os PDFs de fatura são salvos (default `./uploads`) |
+| `APP_CORS_ALLOWED_ORIGINS` | Origens autorizadas no CORS, separadas por vírgula (default `http://localhost:5173`) |
 
 ---
 
@@ -238,6 +239,7 @@ Body de `POST/PUT`: `{ "limite": 500.00, "categoryId": "<uuid>", "mes": 5, "ano"
 - **Senhas:** hash BCrypt.
 - **Autorização:** todos os endpoints (exceto `/auth/**`, `/actuator/health/**`, `/actuator/info`, `/swagger-ui/**`, `/v3/api-docs/**`) exigem token JWT válido.
 - **Isolamento:** cada usuário acessa apenas seus próprios dados; verificação feita na camada de serviço usando o usuário autenticado do `SecurityContext`.
+- **CORS:** habilitado no `SecurityConfig` com as origens de `app.cors.allowed-origins` (`CorsProperties`; env `APP_CORS_ALLOWED_ORIGINS`, default `http://localhost:5173`). Métodos `GET/POST/PUT/PATCH/DELETE/OPTIONS`, header `Location` exposto e `allowCredentials=false` (autenticação por header `Authorization`, não por cookie). Permite que o frontend (Vite em `:5173`) consuma a API de outra origem.
 
 ---
 
