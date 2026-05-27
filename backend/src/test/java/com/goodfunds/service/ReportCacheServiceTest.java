@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.cache.Cache;
 import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -33,7 +34,6 @@ class ReportCacheServiceTest {
 
         for (String cacheName : CacheConfig.REPORT_CACHES) {
             Cache cache = cacheManager.getCache(cacheName);
-            assertThat(cache).isNotNull();
             cache.put(keyFor(userA, "k1"), "valueA1");
             cache.put(keyFor(userA, "k2"), "valueA2");
             cache.put(keyFor(userB, "k1"), "valueB1");
@@ -43,21 +43,25 @@ class ReportCacheServiceTest {
 
         for (String cacheName : CacheConfig.REPORT_CACHES) {
             CaffeineCache cache = (CaffeineCache) cacheManager.getCache(cacheName);
-            assertThat(cache).isNotNull();
             assertThat(cache.getNativeCache().asMap()).containsOnlyKeys(keyFor(userB, "k1"));
         }
     }
 
     @Test
-    void evictUser_isIdempotent_whenCacheHasNoMatchingEntries() {
-        UUID userId = UUID.randomUUID();
+    void evictUser_keepsOtherUsersEntries_whenTargetHasNoEntries() {
+        UUID target = UUID.randomUUID();
+        UUID otherUser = UUID.randomUUID();
+        for (String cacheName : CacheConfig.REPORT_CACHES) {
+            cacheManager.getCache(cacheName).put(keyFor(otherUser, "k1"), "value");
+        }
 
-        service.evictUser(userId);
+        service.evictUser(target);
 
         for (String cacheName : CacheConfig.REPORT_CACHES) {
             CaffeineCache cache = (CaffeineCache) cacheManager.getCache(cacheName);
-            assertThat(cache).isNotNull();
-            assertThat(cache.getNativeCache().asMap()).isEmpty();
+            assertThat(cache.getNativeCache().asMap())
+                    .as("entries belonging to other users must remain intact")
+                    .containsOnlyKeys(keyFor(otherUser, "k1"));
         }
     }
 
@@ -65,9 +69,7 @@ class ReportCacheServiceTest {
     void evictUser_defersEvictionUntilAfterCommit_whenSynchronizationActive() {
         UUID userId = UUID.randomUUID();
         for (String cacheName : CacheConfig.REPORT_CACHES) {
-            Cache cache = cacheManager.getCache(cacheName);
-            assertThat(cache).isNotNull();
-            cache.put(keyFor(userId, "k1"), "value");
+            cacheManager.getCache(cacheName).put(keyFor(userId, "k1"), "value");
         }
 
         TransactionSynchronizationManager.initSynchronization();
@@ -76,7 +78,6 @@ class ReportCacheServiceTest {
 
             for (String cacheName : CacheConfig.REPORT_CACHES) {
                 CaffeineCache cache = (CaffeineCache) cacheManager.getCache(cacheName);
-                assertThat(cache).isNotNull();
                 assertThat(cache.getNativeCache().asMap())
                         .as("entries should still be present before commit")
                         .containsKey(keyFor(userId, "k1"));
@@ -88,7 +89,6 @@ class ReportCacheServiceTest {
 
             for (String cacheName : CacheConfig.REPORT_CACHES) {
                 CaffeineCache cache = (CaffeineCache) cacheManager.getCache(cacheName);
-                assertThat(cache).isNotNull();
                 assertThat(cache.getNativeCache().asMap()).isEmpty();
             }
         } finally {
@@ -97,12 +97,23 @@ class ReportCacheServiceTest {
     }
 
     @Test
-    void evictUser_ignoresMissingOrNonCaffeineCaches() {
-        CaffeineCacheManager emptyManager = new CaffeineCacheManager();
-        emptyManager.setCacheNames(java.util.List.of());
-        ReportCacheService isolated = new ReportCacheService(emptyManager);
+    void evictUser_ignoresNonCaffeineCaches() {
+        ConcurrentMapCacheManager nonCaffeineManager =
+                new ConcurrentMapCacheManager(CacheConfig.REPORT_CACHES.toArray(String[]::new));
+        ReportCacheService isolated = new ReportCacheService(nonCaffeineManager);
+        UUID userId = UUID.randomUUID();
+        for (String cacheName : CacheConfig.REPORT_CACHES) {
+            nonCaffeineManager.getCache(cacheName).put(keyFor(userId, "k1"), "value");
+        }
 
-        isolated.evictUser(UUID.randomUUID());
+        isolated.evictUser(userId);
+
+        for (String cacheName : CacheConfig.REPORT_CACHES) {
+            Cache cache = nonCaffeineManager.getCache(cacheName);
+            assertThat(cache.get(keyFor(userId, "k1"), String.class))
+                    .as("non-Caffeine caches must be left untouched")
+                    .isEqualTo("value");
+        }
     }
 
     private static String keyFor(UUID userId, String suffix) {
