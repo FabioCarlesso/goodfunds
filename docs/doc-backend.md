@@ -344,6 +344,8 @@ cd backend
 
 Os testes usam o perfil `test` com H2 in-memory (não requerem PostgreSQL).
 
+A issue #29 adicionou o plugin **JaCoCo** ao `pom.xml`: o agente é preparado em `test-compile`, o relatório é gerado em `target/site/jacoco/` na fase `test`, e a fase `verify` aplica um gate de cobertura — **mínimo de 70% de instruções no pacote `com.goodfunds.service`** (atualmente acima de 90%). Cada service em `src/main/java/com/goodfunds/service/` tem uma classe de teste correspondente em `src/test/java/com/goodfunds/service/` (`AuthServiceTest`, `BudgetServiceTest`, `CategoryServiceTest`, `CategorySuggestionServiceTest`, `EstimateServiceTest`, `InvoiceProcessingServiceTest`, `InvoiceServiceTest`, `ReportCacheServiceTest`, `ReportServiceTest`, `TransactionServiceTest`). Pelo menos um controller tem teste de integração `MockMvc` — na verdade todos os controllers REST cobertos: `AuthControllerIntegrationTest`, `CategoryControllerIntegrationTest`, `TransactionControllerIntegrationTest`, `BudgetControllerIntegrationTest`, `InvoiceControllerIntegrationTest`, etc.
+
 ---
 
 ## Dependências principais
