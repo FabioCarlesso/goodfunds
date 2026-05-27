@@ -109,6 +109,14 @@ O cliente HTTP fica em `src/api/http.ts`:
 
 > **CORS:** o frontend (`:5173`) e o backend (`:8080`) ficam em origens distintas. O backend libera `http://localhost:5173` por padrao (`APP_CORS_ALLOWED_ORIGINS`). O dev server usa `strictPort` (sempre `:5173`) para a origem casar com o CORS — se a `5173` estiver ocupada, o `npm run dev` falha em vez de pular para `5174` (o que geraria erro de CORS por origem nao permitida). Se o login retornar "Nao foi possivel conectar ao servidor" com o backend no ar, confirme que o frontend esta em `:5173` e que essa origem esta em `APP_CORS_ALLOWED_ORIGINS`.
 
+## Docker
+
+O frontend tem um `Dockerfile` multi-stage (Node 20 para build Vite, nginx 1.27-alpine para runtime). Ele e orquestrado pelo `docker-compose.yml` na raiz do repositorio junto com `app` e `postgres` — veja a secao **Docker Compose** do README raiz para os passos.
+
+- `nginx.conf` aplica fallback de rotas SPA (`try_files ... /index.html`) e cache longo para `/assets/`.
+- `VITE_API_BASE_URL` e injetada em build time via `ARG`/`ENV` no Dockerfile (default `http://localhost:8080`). Para mudar o backend, rebuilde a imagem (`docker compose build frontend`).
+- Build standalone: `docker build -t goodfunds-frontend ./frontend`.
+
 ## Testes
 
 Vitest + React Testing Library, ambiente `jsdom`. Arquivos `*.test.ts(x)` ao lado do codigo testado.
