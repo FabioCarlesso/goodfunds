@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.AuthenticationException;
@@ -276,6 +277,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "Falha de autenticacao",
                 "Credenciais invalidas",
                 "authentication-failed",
+                instanceUri(request));
+    }
+
+    // AccessDeniedException tipicamente e tratada pelo AccessDeniedHandler configurado no
+    // SecurityFilterChain, mas quando dispara fora do filtro (ex.: regra de autorizacao em
+    // service ou @PreAuthorize) cai aqui. Mantemos o mesmo contrato 403 + ProblemDetail.
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        return createProblem(
+                HttpStatus.FORBIDDEN,
+                "Acesso negado",
+                "Acesso negado para este recurso",
+                "access-denied",
                 instanceUri(request));
     }
 
