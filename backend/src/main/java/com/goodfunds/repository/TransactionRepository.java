@@ -28,6 +28,9 @@ public interface TransactionRepository
 
     List<Transaction> findByInvoiceId(UUID invoiceId);
 
+    @EntityGraph(attributePaths = {"category"})
+    List<Transaction> findByInvoiceIdOrderByDataAsc(UUID invoiceId);
+
     @Query("""
             select new com.goodfunds.repository.projection.CategoryAmount(t.category.id, sum(t.valor))
             from Transaction t

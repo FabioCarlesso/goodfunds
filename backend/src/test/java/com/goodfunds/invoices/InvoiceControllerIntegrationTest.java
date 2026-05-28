@@ -2,9 +2,13 @@ package com.goodfunds.invoices;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.goodfunds.domain.Category;
+import com.goodfunds.domain.FormaPagamento;
 import com.goodfunds.domain.Invoice;
 import com.goodfunds.domain.OrigemFatura;
 import com.goodfunds.domain.StatusFatura;
+import com.goodfunds.domain.TipoCategoria;
+import com.goodfunds.domain.Transaction;
 import com.goodfunds.domain.User;
 import com.goodfunds.repository.BudgetRepository;
 import com.goodfunds.repository.CategoryRepository;
@@ -27,11 +31,15 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -192,5 +200,125 @@ class InvoiceControllerIntegrationTest {
 
     private MockMultipartFile pdfFile(String filename, byte[] content) {
         return new MockMultipartFile("file", filename, MediaType.APPLICATION_PDF_VALUE, content);
+    }
+
+    @Test
+    void list_returnsOnlyOwnerInvoicesOrderedByCreatedAtDesc() throws Exception {
+        Invoice older = invoiceRepository.save(Invoice.builder()
+                .arquivo(owner.getId() + "/older.pdf")
+                .origem(OrigemFatura.NUBANK)
+                .status(StatusFatura.PROCESSADA)
+                .mesReferencia(YearMonth.of(2026, 4))
+                .totalValor(new BigDecimal("100.00"))
+                .user(owner)
+                .build());
+        Invoice newer = invoiceRepository.save(Invoice.builder()
+                .arquivo(owner.getId() + "/newer.pdf")
+                .origem(OrigemFatura.ITAU)
+                .status(StatusFatura.PENDENTE_PARSE)
+                .user(owner)
+                .build());
+
+        User other = userRepository.save(User.builder()
+                .nome("Other")
+                .email("other@example.com")
+                .senha(passwordEncoder.encode("senha12345"))
+                .build());
+        invoiceRepository.save(Invoice.builder()
+                .arquivo(other.getId() + "/alheia.pdf")
+                .origem(OrigemFatura.NUBANK)
+                .status(StatusFatura.PROCESSADA)
+                .user(other)
+                .build());
+
+        mockMvc.perform(get("/invoices")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(newer.getId().toString()))
+                .andExpect(jsonPath("$[1].id").value(older.getId().toString()))
+                .andExpect(jsonPath("$[1].totalValor").value(100.00));
+    }
+
+    @Test
+    void list_withoutToken_returns401() throws Exception {
+        mockMvc.perform(get("/invoices"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void get_returnsInvoiceWithTransactionsOrderedByDataAsc() throws Exception {
+        Category alimentacao = categoryRepository.save(Category.builder()
+                .nome("Alimentacao")
+                .tipo(TipoCategoria.DESPESA)
+                .user(owner)
+                .build());
+
+        Invoice invoice = invoiceRepository.save(Invoice.builder()
+                .arquivo(owner.getId() + "/fatura.pdf")
+                .origem(OrigemFatura.NUBANK)
+                .status(StatusFatura.PROCESSADA)
+                .mesReferencia(YearMonth.of(2026, 5))
+                .totalValor(new BigDecimal("75.50"))
+                .user(owner)
+                .build());
+
+        Transaction later = transactionRepository.save(Transaction.builder()
+                .descricao("Almoco")
+                .valor(new BigDecimal("50.00"))
+                .data(LocalDate.of(2026, 5, 20))
+                .formaPagamento(FormaPagamento.CARTAO_CREDITO)
+                .category(alimentacao)
+                .invoice(invoice)
+                .user(owner)
+                .build());
+        Transaction earlier = transactionRepository.save(Transaction.builder()
+                .descricao("Cafe")
+                .valor(new BigDecimal("25.50"))
+                .data(LocalDate.of(2026, 5, 10))
+                .formaPagamento(FormaPagamento.CARTAO_CREDITO)
+                .category(alimentacao)
+                .invoice(invoice)
+                .user(owner)
+                .build());
+
+        mockMvc.perform(get("/invoices/{id}", invoice.getId())
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(invoice.getId().toString()))
+                .andExpect(jsonPath("$.mesReferencia").value("2026-05"))
+                .andExpect(jsonPath("$.totalValor").value(75.50))
+                .andExpect(jsonPath("$.transactions.length()").value(2))
+                .andExpect(jsonPath("$.transactions[0].id").value(earlier.getId().toString()))
+                .andExpect(jsonPath("$.transactions[0].categoryNome").value("Alimentacao"))
+                .andExpect(jsonPath("$.transactions[1].id").value(later.getId().toString()));
+    }
+
+    @Test
+    void get_invoiceFromAnotherUser_returns404() throws Exception {
+        User other = userRepository.save(User.builder()
+                .nome("Other")
+                .email("other@example.com")
+                .senha(passwordEncoder.encode("senha12345"))
+                .build());
+        Invoice alheia = invoiceRepository.save(Invoice.builder()
+                .arquivo(other.getId() + "/alheia.pdf")
+                .origem(OrigemFatura.NUBANK)
+                .status(StatusFatura.PROCESSADA)
+                .user(other)
+                .build());
+
+        mockMvc.perform(get("/invoices/{id}", alheia.getId())
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:invoice-not-found"));
+    }
+
+    @Test
+    void get_unknownInvoice_returns404() throws Exception {
+        mockMvc.perform(get("/invoices/{id}", UUID.randomUUID())
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:invoice-not-found"));
     }
 }

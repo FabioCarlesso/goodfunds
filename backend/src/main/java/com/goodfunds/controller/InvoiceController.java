@@ -2,6 +2,7 @@ package com.goodfunds.controller;
 
 import com.goodfunds.config.OpenApiConfig;
 import com.goodfunds.domain.OrigemFatura;
+import com.goodfunds.dto.InvoiceDetailResponse;
 import com.goodfunds.dto.InvoiceResponse;
 import com.goodfunds.security.AuthenticatedUser;
 import com.goodfunds.service.InvoiceService;
@@ -11,6 +12,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,6 +22,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/invoices")
@@ -30,6 +35,20 @@ public class InvoiceController {
 
     public InvoiceController(InvoiceService invoiceService) {
         this.invoiceService = invoiceService;
+    }
+
+    @GetMapping
+    @Operation(summary = "Lista as faturas do usuario autenticado, ordenadas pela data de importacao.")
+    public List<InvoiceResponse> list(@AuthenticationPrincipal AuthenticatedUser principal) {
+        return invoiceService.listByUser(principal.getUserId());
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Retorna a fatura e as transacoes geradas a partir dela.")
+    public InvoiceDetailResponse get(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @PathVariable UUID id) {
+        return invoiceService.getById(principal.getUserId(), id);
     }
 
     @PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

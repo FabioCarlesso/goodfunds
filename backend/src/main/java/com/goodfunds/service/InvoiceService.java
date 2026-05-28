@@ -5,9 +5,13 @@ import com.goodfunds.domain.Invoice;
 import com.goodfunds.domain.OrigemFatura;
 import com.goodfunds.domain.StatusFatura;
 import com.goodfunds.domain.User;
+import com.goodfunds.dto.InvoiceDetailResponse;
 import com.goodfunds.dto.InvoiceResponse;
+import com.goodfunds.dto.TransactionResponse;
 import com.goodfunds.exception.InvalidInvoiceFileException;
+import com.goodfunds.exception.InvoiceNotFoundException;
 import com.goodfunds.repository.InvoiceRepository;
+import com.goodfunds.repository.TransactionRepository;
 import com.goodfunds.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -34,14 +39,35 @@ public class InvoiceService {
 
     private final InvoiceRepository invoiceRepository;
     private final UserRepository userRepository;
+    private final TransactionRepository transactionRepository;
     private final InvoiceUploadProperties uploadProperties;
 
     public InvoiceService(InvoiceRepository invoiceRepository,
                           UserRepository userRepository,
+                          TransactionRepository transactionRepository,
                           InvoiceUploadProperties uploadProperties) {
         this.invoiceRepository = invoiceRepository;
         this.userRepository = userRepository;
+        this.transactionRepository = transactionRepository;
         this.uploadProperties = uploadProperties;
+    }
+
+    @Transactional(readOnly = true)
+    public List<InvoiceResponse> listByUser(UUID userId) {
+        return invoiceRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(InvoiceResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public InvoiceDetailResponse getById(UUID userId, UUID invoiceId) {
+        Invoice invoice = invoiceRepository.findByIdAndUserId(invoiceId, userId)
+                .orElseThrow(() -> new InvoiceNotFoundException(invoiceId));
+        List<TransactionResponse> transactions = transactionRepository
+                .findByInvoiceIdOrderByDataAsc(invoiceId).stream()
+                .map(TransactionResponse::from)
+                .toList();
+        return InvoiceDetailResponse.from(invoice, transactions);
     }
 
     @Transactional

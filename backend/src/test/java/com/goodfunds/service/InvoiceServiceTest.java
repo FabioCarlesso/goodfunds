@@ -4,6 +4,7 @@ import com.goodfunds.config.InvoiceUploadProperties;
 import com.goodfunds.domain.Invoice;
 import com.goodfunds.domain.User;
 import com.goodfunds.repository.InvoiceRepository;
+import com.goodfunds.repository.TransactionRepository;
 import com.goodfunds.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +31,7 @@ class InvoiceServiceTest {
 
     @Mock private InvoiceRepository invoiceRepository;
     @Mock private UserRepository userRepository;
+    @Mock private TransactionRepository transactionRepository;
 
     @TempDir
     Path uploadsDir;
@@ -44,7 +46,7 @@ class InvoiceServiceTest {
                 .build();
         InvoiceUploadProperties properties = new InvoiceUploadProperties();
         properties.setDir(uploadsDir.toString());
-        InvoiceService service = new InvoiceService(invoiceRepository, userRepository, properties);
+        InvoiceService service = new InvoiceService(invoiceRepository, userRepository, transactionRepository, properties);
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "fatura.pdf",
