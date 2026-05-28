@@ -237,9 +237,15 @@ Body de `POST/PUT`: `{ "limite": 500.00, "categoryId": "<uuid>", "mes": 5, "ano"
 - **Autenticação:** JWT com expiração de 24 horas via JJWT 0.12.6.
 - **Filtro:** `JwtAuthFilter` intercepta todas as requisições e valida o token antes de liberar acesso ao contexto Spring Security.
 - **Senhas:** hash BCrypt.
-- **Autorização:** todos os endpoints (exceto `/auth/**`, `/actuator/health/**`, `/actuator/info`, `/swagger-ui/**`, `/v3/api-docs/**`) exigem token JWT válido.
-- **Isolamento:** cada usuário acessa apenas seus próprios dados; verificação feita na camada de serviço usando o usuário autenticado do `SecurityContext`.
+- **Autorização:** todos os endpoints (exceto `/auth/**`, `/actuator/health/**`, `/actuator/info`, `/swagger-ui/**`, `/v3/api-docs/**`) exigem token JWT válido. Requisições sem token retornam 401 via `ProblemDetailAuthenticationEntryPoint`; `AccessDeniedException` retorna 403 via `ProblemDetailAccessDeniedHandler` (também tratada como fallback no `GlobalExceptionHandler`).
+- **Isolamento entre usuários:** cada serviço carrega recursos via `findByIdAndUserId(...)` usando o usuário autenticado do `SecurityContext`. Tentativas de acessar/editar/excluir um id pertencente a outro usuário caem em `ResourceNotFoundException` e retornam **404** (decisão deliberada: evitar vazar a existência de ids alheios). Coberto por `AuthorizationIsolationIntegrationTest`.
 - **CORS:** habilitado no `SecurityConfig` com as origens de `app.cors.allowed-origins` (`CorsProperties`; env `APP_CORS_ALLOWED_ORIGINS`, default `http://localhost:5173`). Métodos `GET/POST/PUT/PATCH/DELETE/OPTIONS`, header `Location` exposto e `allowCredentials=false` (autenticação por header `Authorization`, não por cookie). Permite que o frontend (Vite em `:5173`) consuma a API de outra origem.
+- **Headers de segurança** (aplicados a todas as respostas, validados por `SecurityHeadersIntegrationTest`):
+  - `X-Content-Type-Options: nosniff` — impede MIME sniffing.
+  - `X-Frame-Options: DENY` — bloqueia incorporação em `<frame>/<iframe>` (clickjacking).
+  - `Referrer-Policy: no-referrer` — não envia o header `Referer` em navegação saindo da API.
+  - `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` — CSP mínima para responses JSON, sem permitir carregamento de subrecursos nem ser embutida em frames.
+- **Rate limiting:** **não implementado no MVP**. Decisão: o Goodfunds é uma aplicação pessoal de uso único e a API só fica exposta via `localhost` (Docker Compose) ou pelo frontend autenticado. Adicionar rate limiting agora introduziria dependência extra (bucket4j/Redis) sem ganho de risco real. Se a API for exposta publicamente no futuro, considerar limitar `/auth/login` e `/auth/register` no proxy (nginx `limit_req`) ou via filtro com bucket4j.
 
 ---
 
