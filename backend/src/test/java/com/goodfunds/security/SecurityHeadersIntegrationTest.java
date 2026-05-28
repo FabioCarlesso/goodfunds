@@ -39,4 +39,22 @@ class SecurityHeadersIntegrationTest {
                 .andExpect(header().string("Content-Security-Policy",
                         "default-src 'none'; frame-ancestors 'none'"));
     }
+
+    @Test
+    void swaggerUi_doesNotCarryRestrictiveCsp() throws Exception {
+        // A CSP "default-src 'none'" quebraria o Swagger UI (que carrega JS/CSS/fonts).
+        // Os demais headers de seguranca continuam aplicados.
+        mockMvc.perform(get("/swagger-ui/index.html"))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist("Content-Security-Policy"))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(header().string("X-Frame-Options", "DENY"));
+    }
+
+    @Test
+    void apiDocsJson_doesNotCarryRestrictiveCsp() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist("Content-Security-Policy"));
+    }
 }

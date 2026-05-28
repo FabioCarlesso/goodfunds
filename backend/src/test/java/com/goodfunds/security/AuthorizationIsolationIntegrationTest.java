@@ -2,6 +2,7 @@ package com.goodfunds.security;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.goodfunds.repository.BudgetRepository;
 import com.goodfunds.repository.CategoryRepository;
 import com.goodfunds.repository.TransactionRepository;
 import com.goodfunds.repository.UserRepository;
@@ -45,9 +46,11 @@ class AuthorizationIsolationIntegrationTest {
     @Autowired private UserRepository userRepository;
     @Autowired private CategoryRepository categoryRepository;
     @Autowired private TransactionRepository transactionRepository;
+    @Autowired private BudgetRepository budgetRepository;
 
     @BeforeEach
     void cleanup() {
+        budgetRepository.deleteAll();
         transactionRepository.deleteAll();
         categoryRepository.deleteAll();
         userRepository.deleteAll();
@@ -101,6 +104,57 @@ class AuthorizationIsolationIntegrationTest {
                 .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:category-not-found"));
     }
 
+    @Test
+    void transactionOfAnotherUser_isNotAccessible() throws Exception {
+        String tokenA = registerUser("a-tx@example.com");
+        String tokenB = registerUser("b-tx@example.com");
+
+        String categoryIdA = createCategory(tokenA, "Categoria Tx A");
+        String transactionId = createTransaction(tokenA, categoryIdA);
+        String categoryIdB = createCategory(tokenB, "Categoria Tx B");
+
+        // PUT em transacao de A com token de B retorna 404
+        String updatePayload = String.format("""
+                {"descricao": "hack", "valor": 99.00, "data": "2026-01-15",
+                 "formaPagamento": "PIX", "categoryId": "%s"}
+                """, categoryIdB);
+        mockMvc.perform(put("/transactions/" + transactionId)
+                        .header("Authorization", "Bearer " + tokenB)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updatePayload))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:transaction-not-found"));
+
+        // DELETE em transacao de A com token de B tambem 404
+        mockMvc.perform(delete("/transactions/" + transactionId)
+                        .header("Authorization", "Bearer " + tokenB))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:transaction-not-found"));
+    }
+
+    @Test
+    void budgetOfAnotherUser_isNotAccessible() throws Exception {
+        String tokenA = registerUser("a-bg@example.com");
+        String tokenB = registerUser("b-bg@example.com");
+
+        String categoryIdA = createCategory(tokenA, "Categoria Budget A");
+        String budgetId = createBudget(tokenA, categoryIdA);
+        String categoryIdB = createCategory(tokenB, "Categoria Budget B");
+
+        // PUT em orcamento de A com token de B retorna 404
+        String updatePayload = String.format("""
+                {"limite": 999.00, "categoryId": "%s", "mes": 5, "ano": 2026}
+                """, categoryIdB);
+        mockMvc.perform(put("/budgets/" + budgetId)
+                        .header("Authorization", "Bearer " + tokenB)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updatePayload))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:budget-not-found"));
+    }
+
     private String registerUser(String email) throws Exception {
         String payload = String.format("""
                 {"nome": "User", "email": "%s", "senha": "senha12345"}
@@ -119,6 +173,35 @@ class AuthorizationIsolationIntegrationTest {
                 {"nome": "%s", "tipo": "DESPESA"}
                 """, nome);
         MvcResult result = mockMvc.perform(post("/categories")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isCreated())
+                .andReturn();
+        JsonNode node = objectMapper.readTree(result.getResponse().getContentAsString());
+        return node.get("id").asText();
+    }
+
+    private String createTransaction(String token, String categoryId) throws Exception {
+        String payload = String.format("""
+                {"descricao": "compra", "valor": 50.00, "data": "2026-01-10",
+                 "formaPagamento": "PIX", "categoryId": "%s"}
+                """, categoryId);
+        MvcResult result = mockMvc.perform(post("/transactions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isCreated())
+                .andReturn();
+        JsonNode node = objectMapper.readTree(result.getResponse().getContentAsString());
+        return node.get("id").asText();
+    }
+
+    private String createBudget(String token, String categoryId) throws Exception {
+        String payload = String.format("""
+                {"limite": 500.00, "categoryId": "%s", "mes": 5, "ano": 2026}
+                """, categoryId);
+        MvcResult result = mockMvc.perform(post("/budgets")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
