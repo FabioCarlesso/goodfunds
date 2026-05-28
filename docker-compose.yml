@@ -20,6 +20,7 @@ services:
   app:
     build:
       context: ./backend
+      network: host
     image: goodfunds-backend:local
     container_name: goodfunds-app
     restart: unless-stopped
@@ -39,6 +40,7 @@ services:
   frontend:
     build:
       context: ./frontend
+      network: host
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
     image: goodfunds-frontend:local
