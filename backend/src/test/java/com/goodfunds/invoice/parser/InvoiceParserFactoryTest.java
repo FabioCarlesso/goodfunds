@@ -26,6 +26,16 @@ class InvoiceParserFactoryTest {
     }
 
     @Test
+    void resolvesRealParsersForNubankAndItau() {
+        InvoiceParser nubank = new NubankInvoiceParser();
+        InvoiceParser itau = new ItauInvoiceParser();
+        InvoiceParserFactory factory = new InvoiceParserFactory(List.of(nubank, itau));
+
+        assertThat(factory.forOrigem(OrigemFatura.NUBANK)).isSameAs(nubank);
+        assertThat(factory.forOrigem(OrigemFatura.ITAU)).isSameAs(itau);
+    }
+
+    @Test
     void forOrigem_failsWhenNoParserRegistered() {
         InvoiceParserFactory factory = new InvoiceParserFactory(List.of(new NubankInvoiceParser()));
 

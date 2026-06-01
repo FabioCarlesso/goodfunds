@@ -306,8 +306,12 @@ Cache **Caffeine** aplicado aos relatórios (`/reports/*`), implementado na issu
   - **Mês de referência:** linha `Mês de referência: <MES> de <ANO>` (mês em PT-BR, três letras: `JAN`...`DEZ`).
   - **Total:** linha `Valor total: R$ <valor>` ou `Total da fatura: R$ <valor>`.
   - **Lançamentos:** linhas `DD MMM Descrição R$ <valor>`. A data é montada com o ano da fatura; meses posteriores ao mês de referência são interpretados como ano anterior (transações anteriores à data de fechamento).
-- A seleção por `origem` (`NUBANK`, `ITAU`, `OUTROS`) deixa o modelo pronto para novos parsers — basta criar mais uma implementação `InvoiceParser` anotada com `@Component`.
-- Fixture de teste: `src/test/resources/invoices/nubank/sample-fatura.pdf`, gerada deterministicamente por `NubankInvoiceFixtures` (regenerável via `java ... com.goodfunds.invoice.parser.NubankInvoiceFixtures`).
+- `ItauInvoiceParser`: mesma stack (PDFBox 3.0.3) para faturas do Itaú, que usam formato numérico:
+  - **Mês de referência:** linha `Mês de referência: MM/AAAA`.
+  - **Total:** linha `Total desta fatura R$ <valor>` ou `Total da fatura: R$ <valor>`.
+  - **Lançamentos:** linhas `DD/MM Descrição <valor>` (valor no padrão BR sem prefixo `R$` por linha). Mesma regra de recuo de ano para meses posteriores ao mês de referência.
+- A seleção por `origem` (`NUBANK`, `ITAU`, `OUTROS`) deixa o modelo pronto para novos parsers — basta criar mais uma implementação `InvoiceParser` anotada com `@Component`. `OUTROS` ainda não tem parser registrado.
+- Fixtures de teste: `src/test/resources/invoices/nubank/sample-fatura.pdf` e `src/test/resources/invoices/itau/sample-fatura.pdf`, gerados deterministicamente por `NubankInvoiceFixtures` / `ItauInvoiceFixtures` (regeneráveis via `java ... com.goodfunds.invoice.parser.{Nubank,Itau}InvoiceFixtures`).
 - PDFs salvos em `{app.uploads.dir}/{userId}/` no filesystem local.
 
 ### Geração de transações a partir da fatura (issue #16)
