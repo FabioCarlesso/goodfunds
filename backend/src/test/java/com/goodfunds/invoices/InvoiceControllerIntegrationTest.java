@@ -10,6 +10,7 @@ import com.goodfunds.domain.StatusFatura;
 import com.goodfunds.domain.TipoCategoria;
 import com.goodfunds.domain.Transaction;
 import com.goodfunds.domain.User;
+import com.goodfunds.invoice.parser.NubankInvoiceFixtures;
 import com.goodfunds.repository.BudgetRepository;
 import com.goodfunds.repository.CategoryRepository;
 import com.goodfunds.repository.InvoiceRepository;
@@ -39,8 +40,10 @@ import java.time.YearMonth;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -200,6 +203,123 @@ class InvoiceControllerIntegrationTest {
 
     private MockMultipartFile pdfFile(String filename, byte[] content) {
         return new MockMultipartFile("file", filename, MediaType.APPLICATION_PDF_VALUE, content);
+    }
+
+    @Test
+    void process_pendingInvoice_generatesTransactionsAndReturnsProcessada() throws Exception {
+        categoryRepository.save(Category.builder()
+                .nome("Outros")
+                .tipo(TipoCategoria.DESPESA)
+                .user(owner)
+                .build());
+        Invoice invoice = persistInvoiceWithSamplePdf(StatusFatura.PENDENTE_PARSE);
+
+        mockMvc.perform(post("/invoices/{id}/process", invoice.getId())
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(invoice.getId().toString()))
+                .andExpect(jsonPath("$.status").value("PROCESSADA"))
+                .andExpect(jsonPath("$.mesReferencia").value("2025-06"))
+                .andExpect(jsonPath("$.totalValor").value(1234.56));
+
+        assertThat(transactionRepository.findByInvoiceId(invoice.getId())).hasSize(5);
+    }
+
+    @Test
+    void process_invoiceFromAnotherUser_returns404() throws Exception {
+        User other = userRepository.save(User.builder()
+                .nome("Other")
+                .email("other@example.com")
+                .senha(passwordEncoder.encode("senha12345"))
+                .build());
+        Invoice alheia = invoiceRepository.save(Invoice.builder()
+                .arquivo(other.getId() + "/alheia.pdf")
+                .origem(OrigemFatura.NUBANK)
+                .status(StatusFatura.PENDENTE_PARSE)
+                .user(other)
+                .build());
+
+        mockMvc.perform(post("/invoices/{id}/process", alheia.getId())
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:invoice-not-found"));
+    }
+
+    @Test
+    void process_withoutToken_returns401() throws Exception {
+        mockMvc.perform(post("/invoices/{id}/process", UUID.randomUUID()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void delete_removesInvoiceTransactionsAndFile() throws Exception {
+        Category alimentacao = categoryRepository.save(Category.builder()
+                .nome("Alimentacao")
+                .tipo(TipoCategoria.DESPESA)
+                .user(owner)
+                .build());
+        Invoice invoice = persistInvoiceWithSamplePdf(StatusFatura.PROCESSADA);
+        Path savedFile = uploadsDir.resolve(invoice.getArquivo());
+        transactionRepository.save(Transaction.builder()
+                .descricao("Almoco")
+                .valor(new BigDecimal("50.00"))
+                .data(LocalDate.of(2026, 5, 20))
+                .formaPagamento(FormaPagamento.CARTAO_CREDITO)
+                .category(alimentacao)
+                .invoice(invoice)
+                .user(owner)
+                .build());
+
+        mockMvc.perform(delete("/invoices/{id}", invoice.getId())
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isNoContent());
+
+        assertThat(invoiceRepository.findById(invoice.getId())).isEmpty();
+        assertThat(transactionRepository.findByInvoiceId(invoice.getId())).isEmpty();
+        assertThat(Files.exists(savedFile)).isFalse();
+    }
+
+    @Test
+    void delete_invoiceFromAnotherUser_returns404AndKeepsInvoice() throws Exception {
+        User other = userRepository.save(User.builder()
+                .nome("Other")
+                .email("other@example.com")
+                .senha(passwordEncoder.encode("senha12345"))
+                .build());
+        Invoice alheia = invoiceRepository.save(Invoice.builder()
+                .arquivo(other.getId() + "/alheia.pdf")
+                .origem(OrigemFatura.NUBANK)
+                .status(StatusFatura.PROCESSADA)
+                .user(other)
+                .build());
+
+        mockMvc.perform(delete("/invoices/{id}", alheia.getId())
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:invoice-not-found"));
+
+        assertThat(invoiceRepository.findById(alheia.getId())).isPresent();
+    }
+
+    @Test
+    void delete_unknownInvoice_returns404() throws Exception {
+        mockMvc.perform(delete("/invoices/{id}", UUID.randomUUID())
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:invoice-not-found"));
+    }
+
+    private Invoice persistInvoiceWithSamplePdf(StatusFatura status) throws Exception {
+        String filename = UUID.randomUUID() + ".pdf";
+        Path target = uploadsDir.resolve(owner.getId().toString()).resolve(filename);
+        Files.createDirectories(target.getParent());
+        NubankInvoiceFixtures.writeSamplePdf(target);
+        return invoiceRepository.save(Invoice.builder()
+                .arquivo(owner.getId() + "/" + filename)
+                .origem(OrigemFatura.NUBANK)
+                .status(status)
+                .user(owner)
+                .build());
     }
 
     @Test

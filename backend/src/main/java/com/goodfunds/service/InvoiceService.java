@@ -41,15 +41,18 @@ public class InvoiceService {
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
     private final InvoiceUploadProperties uploadProperties;
+    private final ReportCacheService reportCacheService;
 
     public InvoiceService(InvoiceRepository invoiceRepository,
                           UserRepository userRepository,
                           TransactionRepository transactionRepository,
-                          InvoiceUploadProperties uploadProperties) {
+                          InvoiceUploadProperties uploadProperties,
+                          ReportCacheService reportCacheService) {
         this.invoiceRepository = invoiceRepository;
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
         this.uploadProperties = uploadProperties;
+        this.reportCacheService = reportCacheService;
     }
 
     @Transactional(readOnly = true)
@@ -108,6 +111,37 @@ public class InvoiceService {
         }
     }
 
+    @Transactional
+    public void delete(UUID userId, UUID invoiceId) {
+        Invoice invoice = invoiceRepository.findByIdAndUserId(invoiceId, userId)
+                .orElseThrow(() -> new InvoiceNotFoundException(invoiceId));
+
+        // Remove primeiro as transactions geradas pela fatura para nao violar a FK.
+        transactionRepository.deleteByInvoiceId(invoiceId);
+        invoiceRepository.delete(invoice);
+
+        // So apaga o PDF apos o commit: se a transacao reverter, o arquivo continua
+        // referenciado pela fatura ainda existente.
+        Path file = resolveStoredFile(invoice.getArquivo());
+        if (file != null) {
+            registerCommitCleanup(file);
+        }
+
+        // A remocao das transactions altera os agregados; invalida os relatorios cacheados.
+        reportCacheService.evictUser(userId);
+    }
+
+    private Path resolveStoredFile(String relativePath) {
+        Path baseDir = Path.of(uploadProperties.getDir()).toAbsolutePath().normalize();
+        Path resolved = baseDir.resolve(relativePath).normalize();
+        if (!resolved.startsWith(baseDir)) {
+            // Defesa contra path traversal caso `arquivo` deixe de ser gerado pelo servidor.
+            log.warn("Caminho de arquivo invalido ao excluir fatura: {}", relativePath);
+            return null;
+        }
+        return resolved;
+    }
+
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new InvalidInvoiceFileException("Arquivo da fatura e obrigatorio");
@@ -146,6 +180,22 @@ public class InvoiceService {
             @Override
             public void afterCompletion(int status) {
                 if (status != STATUS_COMMITTED) {
+                    deleteFileIfExists(target);
+                }
+            }
+        });
+    }
+
+    private void registerCommitCleanup(Path target) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            // Sem transacao ativa (ex.: chamada direta em teste): remove imediatamente.
+            deleteFileIfExists(target);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_COMMITTED) {
                     deleteFileIfExists(target);
                 }
             }

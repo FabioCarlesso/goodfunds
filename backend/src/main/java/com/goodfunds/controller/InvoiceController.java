@@ -5,6 +5,7 @@ import com.goodfunds.domain.OrigemFatura;
 import com.goodfunds.dto.InvoiceDetailResponse;
 import com.goodfunds.dto.InvoiceResponse;
 import com.goodfunds.security.AuthenticatedUser;
+import com.goodfunds.service.InvoiceProcessingService;
 import com.goodfunds.service.InvoiceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -12,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,9 +34,12 @@ import java.util.UUID;
 public class InvoiceController {
 
     private final InvoiceService invoiceService;
+    private final InvoiceProcessingService invoiceProcessingService;
 
-    public InvoiceController(InvoiceService invoiceService) {
+    public InvoiceController(InvoiceService invoiceService,
+                             InvoiceProcessingService invoiceProcessingService) {
         this.invoiceService = invoiceService;
+        this.invoiceProcessingService = invoiceProcessingService;
     }
 
     @GetMapping
@@ -62,5 +67,22 @@ public class InvoiceController {
                 .buildAndExpand(response.id())
                 .toUri();
         return ResponseEntity.created(location).body(response);
+    }
+
+    @PostMapping("/{id}/process")
+    @Operation(summary = "Processa uma fatura pendente: extrai os lancamentos do PDF e gera as transacoes.")
+    public InvoiceResponse process(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @PathVariable UUID id) {
+        return invoiceProcessingService.process(principal.getUserId(), id);
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Exclui uma fatura, o arquivo PDF e as transacoes geradas a partir dela.")
+    public ResponseEntity<Void> delete(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @PathVariable UUID id) {
+        invoiceService.delete(principal.getUserId(), id);
+        return ResponseEntity.noContent().build();
     }
 }
