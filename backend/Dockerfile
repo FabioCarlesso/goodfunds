@@ -18,6 +18,10 @@ WORKDIR /app
 RUN groupadd --system goodfunds && useradd --system --gid goodfunds --home /app goodfunds
 
 COPY --from=build /workspace/target/goodfunds-backend.jar /app/app.jar
+# Cria o diretorio de uploads ainda na imagem para que, ao montar o volume nomeado
+# pela primeira vez, o Docker herde o dono `goodfunds` (caso contrario o volume nasce
+# como root e o processo nao-root falha com AccessDeniedException ao gravar a fatura).
+RUN mkdir -p /app/uploads
 RUN chown -R goodfunds:goodfunds /app
 USER goodfunds
 
