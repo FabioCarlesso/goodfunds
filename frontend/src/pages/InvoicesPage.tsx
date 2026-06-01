@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { listInvoices, uploadInvoice } from '../api/invoices'
+import { deleteInvoice, listInvoices, processInvoice, uploadInvoice } from '../api/invoices'
 import { getApiErrorMessage } from '../api/errors'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -30,6 +30,12 @@ export default function InvoicesPage() {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [processingId, setProcessingId] = useState<string | null>(null)
+  const [processError, setProcessError] = useState<string | null>(null)
+
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -65,6 +71,35 @@ export default function InvoicesPage() {
       setUploadError(getApiErrorMessage(err, 'Nao foi possivel enviar a fatura.'))
     } finally {
       setUploading(false)
+    }
+  }
+
+  async function handleProcess(id: string) {
+    setProcessError(null)
+    setProcessingId(id)
+    try {
+      await processInvoice(id)
+      await load()
+    } catch (err) {
+      setProcessError(getApiErrorMessage(err, 'Nao foi possivel processar a fatura.'))
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!window.confirm('Excluir esta fatura e as transacoes geradas a partir dela?')) {
+      return
+    }
+    setDeleteError(null)
+    setDeletingId(id)
+    try {
+      await deleteInvoice(id)
+      await load()
+    } catch (err) {
+      setDeleteError(getApiErrorMessage(err, 'Nao foi possivel excluir a fatura.'))
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -118,6 +153,17 @@ export default function InvoicesPage() {
         <EmptyState message="Nenhuma fatura importada ainda." />
       )}
 
+      {processError && !loading && (
+        <p role="alert" className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          {processError}
+        </p>
+      )}
+      {deleteError && !loading && (
+        <p role="alert" className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          {deleteError}
+        </p>
+      )}
+
       {!loading && !error && invoices.length > 0 && (
         <Card className="overflow-x-auto p-0">
           <table className="w-full text-left text-sm">
@@ -129,6 +175,7 @@ export default function InvoicesPage() {
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-right">Total</th>
                 <th className="px-4 py-3">Importada em</th>
+                <th className="px-4 py-3 text-right">Acoes</th>
               </tr>
             </thead>
             <tbody>
@@ -152,6 +199,31 @@ export default function InvoicesPage() {
                   </td>
                   <td className="px-4 py-3 text-slate-600">
                     {formatDate(invoice.createdAt.slice(0, 10))}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-2">
+                      {invoice.status !== 'PROCESSADA' && (
+                        <Button
+                          type="button"
+                          onClick={() => handleProcess(invoice.id)}
+                          disabled={processingId === invoice.id || deletingId === invoice.id}
+                        >
+                          {processingId === invoice.id
+                            ? 'Processando...'
+                            : invoice.status === 'ERRO'
+                              ? 'Reprocessar'
+                              : 'Processar'}
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        onClick={() => handleDelete(invoice.id)}
+                        disabled={deletingId === invoice.id || processingId === invoice.id}
+                        className="bg-red-600 hover:bg-red-500"
+                      >
+                        {deletingId === invoice.id ? 'Excluindo...' : 'Excluir'}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
