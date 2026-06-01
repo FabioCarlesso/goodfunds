@@ -170,7 +170,11 @@ Body de `POST/PUT`: `{ "nome": "Lazer", "tipo": "DESPESA" }`. `nome` obrigatóri
 
 | Método | Rota | Autenticação | Descrição |
 |---|---|---|---|
+| GET | `/invoices` | JWT | Lista as faturas do usuário (ordenadas por `createdAt` DESC) |
+| GET | `/invoices/{id}` | JWT | Detalhe da fatura com as transações geradas (ordenadas por `data` ASC); 404 `invoice-not-found` se a fatura não pertencer ao usuário |
 | POST | `/invoices/upload` | JWT | Upload de fatura PDF (multipart; 201 + `Location`) |
+| POST | `/invoices/{id}/process` | JWT | Processa a fatura: extrai os lançamentos do PDF e gera as transações; 404 `invoice-not-found` se não pertencer ao usuário |
+| DELETE | `/invoices/{id}` | JWT | Exclui a fatura, o PDF e as transações geradas (204); 404 `invoice-not-found` se não pertencer ao usuário |
 
 `POST /invoices/upload` recebe `multipart/form-data` com:
 
@@ -179,7 +183,11 @@ Body de `POST/PUT`: `{ "nome": "Lazer", "tipo": "DESPESA" }`. `nome` obrigatóri
 
 O arquivo é salvo em `{app.uploads.dir}/{userId}/{uuid}.pdf` e a `Invoice` é persistida com `status = PENDENTE_PARSE`. Os campos `mesReferencia` e `totalValor` ficam nulos até o parser processar a fatura. Se a persistência falhar ou a transação fizer rollback depois da gravação do PDF, o arquivo recém-salvo é removido. Limites controlados por `spring.servlet.multipart.max-file-size` (default 10MB) — excedeu retorna 413 `max-upload-size-exceeded`. Validações de arquivo retornam 400 `invalid-invoice-file`.
 
-Listagem e detalhe de faturas (`GET /invoices` e `GET /invoices/{id}`) ainda são endpoints planejados.
+`GET /invoices/{id}` retorna `InvoiceDetailResponse` (mesmos campos de `InvoiceResponse` mais `transactions: TransactionResponse[]`). Ambos os GETs são isolados pelo `userId` do JWT.
+
+`POST /invoices/{id}/process` é idempotente: uma fatura já `PROCESSADA` não gera novas transações; em reprocessamento os lançamentos anteriores são removidos antes de recriar. Falha de parse/validação marca a fatura como `ERRO` (sem propagar rollback), permitindo nova tentativa.
+
+`DELETE /invoices/{id}` remove as transações geradas, a `Invoice` e o arquivo PDF do disco (apagado apenas após o commit) e invalida os relatórios cacheados do usuário.
 
 ### Budgets
 

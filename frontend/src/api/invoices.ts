@@ -15,6 +15,20 @@ export async function getInvoice(id: string): Promise<InvoiceDetail> {
 }
 
 /**
+ * `POST /invoices/{id}/process` — processa uma fatura pendente: extrai os lancamentos
+ * do PDF e gera as transacoes. Retorna a fatura atualizada (status `PROCESSADA`/`ERRO`).
+ */
+export async function processInvoice(id: string): Promise<Invoice> {
+  const { data } = await http.post<Invoice>(`/invoices/${id}/process`)
+  return data
+}
+
+/** `DELETE /invoices/{id}` — exclui a fatura, o PDF e as transacoes geradas. */
+export async function deleteInvoice(id: string): Promise<void> {
+  await http.delete(`/invoices/${id}`)
+}
+
+/**
  * `POST /invoices/upload` — envia um PDF de fatura (multipart). O backend deduz a
  * origem quando `origem` nao e informada. Sobrescreve o `Content-Type` do cliente
  * para `multipart/form-data` (o axios injeta o boundary).

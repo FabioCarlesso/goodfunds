@@ -8,7 +8,7 @@ O **fluxo de autenticação** foi implementado (issue #25): roteamento com React
 
 As **telas MVP** foram implementadas (issue #26): Dashboard (`/dashboard`), Faturas (`/faturas`) com upload e detalhe (`/faturas/:id`), Planejamento (`/planejamento`) e Relatórios (`/relatorios`). As rotas protegidas compartilham o `AppLayout` (`src/components/layout/`) com **menu lateral** de navegação; os gráficos usam **Recharts**. As rotas seguem nomes em português conforme os critérios de aceite da issue #26. A tela de transações (CRUD manual) e o serviço `frontend` no Docker Compose seguem como próximos passos.
 
-> **Pendências de backend:** as telas de Faturas consomem `GET /invoices` e `GET /invoices/{id}` (lista e detalhe com transações geradas), previstos em `goodfunds-planejamento.md` mas ainda não expostos pelo backend (hoje só existe `POST /invoices/upload`). O recurso de orçamentos não possui `DELETE`, então o Planejamento cobre criação e edição.
+> **Backend de Faturas:** as telas de Faturas consomem `GET /invoices`, `GET /invoices/{id}` (lista e detalhe com transações geradas), `POST /invoices/upload`, `POST /invoices/{id}/process` e `DELETE /invoices/{id}` — todos expostos pelo backend. O recurso de orçamentos não possui `DELETE`, então o Planejamento cobre criação e edição.
 
 ---
 
@@ -94,7 +94,8 @@ frontend/
 
 - Lista de faturas importadas com status (`PENDENTE_PARSE`, `PROCESSADA`, `ERRO`).
 - Upload de nova fatura: input de arquivo PDF com drag-and-drop.
-- Chamada: `POST /invoices/upload`.
+- Coluna de ações por fatura: **Processar** (ou **Reprocessar** quando `ERRO`) gera as transações a partir do PDF; **Excluir** remove a fatura e suas transações (com confirmação).
+- Chamadas: `POST /invoices/upload`, `POST /invoices/{id}/process`, `DELETE /invoices/{id}`.
 - Detalhe da fatura: lista de transações geradas com opção de reclassificar categoria.
 
 ### Planejamento (`/planning`)
