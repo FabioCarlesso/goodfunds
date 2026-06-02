@@ -10,7 +10,6 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.Normalizer;
-import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -21,7 +20,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
-public class NubankInvoiceParser implements InvoiceParser {
+public class NubankInvoiceParser extends InvoiceParserSupport {
 
     private static final Map<String, Integer> MESES_PT = Map.ofEntries(
             Map.entry("JAN", 1),
@@ -135,24 +134,6 @@ public class NubankInvoiceParser implements InvoiceParser {
 
     private Integer resolveMonth(String token) {
         return MESES_PT.get(token.substring(0, 3));
-    }
-
-    private LocalDate resolveDate(YearMonth mesReferencia, int month, int day) {
-        int year = mesReferencia.getYear();
-        if (month > mesReferencia.getMonthValue()) {
-            year -= 1;
-        }
-        try {
-            return LocalDate.of(year, month, day);
-        } catch (DateTimeException ex) {
-            throw new InvoiceParseException(
-                    "Data invalida na fatura Nubank: " + day + "/" + month + "/" + year, ex);
-        }
-    }
-
-    private BigDecimal parseValor(String raw) {
-        String normalized = raw.replace(".", "").replace(',', '.');
-        return new BigDecimal(normalized);
     }
 
     private String stripAccents(String value) {

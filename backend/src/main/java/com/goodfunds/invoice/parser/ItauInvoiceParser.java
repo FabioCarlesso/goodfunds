@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -25,7 +24,7 @@ import java.util.regex.Pattern;
  * padrao brasileiro sem prefixo {@code R$} em cada lancamento.</p>
  */
 @Component
-public class ItauInvoiceParser implements InvoiceParser {
+public class ItauInvoiceParser extends InvoiceParserSupport {
 
     private static final Pattern MES_REFERENCIA = Pattern.compile(
             "(?im)m[eê]s\\s+de\\s+refer[eê]ncia\\s*[:\\-]?\\s*(\\d{1,2})/(\\d{4})"
@@ -118,23 +117,5 @@ public class ItauInvoiceParser implements InvoiceParser {
             result.add(new ParsedInvoiceTransaction(data, descricao, valor));
         }
         return result;
-    }
-
-    private LocalDate resolveDate(YearMonth mesReferencia, int month, int day) {
-        int year = mesReferencia.getYear();
-        if (month > mesReferencia.getMonthValue()) {
-            year -= 1;
-        }
-        try {
-            return LocalDate.of(year, month, day);
-        } catch (DateTimeException ex) {
-            throw new InvoiceParseException(
-                    "Data invalida na fatura Itau: " + day + "/" + month + "/" + year, ex);
-        }
-    }
-
-    private BigDecimal parseValor(String raw) {
-        String normalized = raw.replace(".", "").replace(',', '.');
-        return new BigDecimal(normalized);
     }
 }

@@ -162,6 +162,20 @@ class ItauInvoiceParserTest {
     }
 
     @Test
+    void parseText_removesThousandSeparatorOnTransactionValue() {
+        String text = String.join("\n",
+                "Mes de referencia: 06/2025",
+                "Total desta fatura R$ 1.500,00",
+                "10/06 NOTEBOOK 1.500,00");
+
+        ParsedInvoice parsed = parser.parseText(text);
+
+        assertThat(parsed.transacoes()).singleElement()
+                .extracting(ParsedInvoiceTransaction::valor)
+                .isEqualTo(new BigDecimal("1500.00"));
+    }
+
+    @Test
     void parseText_recuaTransacoesPosterioresParaAnoAnterior() {
         String text = String.join("\n",
                 "Mes de referencia: 01/2025",
