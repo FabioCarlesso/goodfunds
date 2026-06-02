@@ -306,12 +306,13 @@ Cache **Caffeine** aplicado aos relatórios (`/reports/*`), implementado na issu
   - **Mês de referência:** linha `Mês de referência: <MES> de <ANO>` (mês em PT-BR, três letras: `JAN`...`DEZ`).
   - **Total:** linha `Valor total: R$ <valor>` ou `Total da fatura: R$ <valor>`.
   - **Lançamentos:** linhas `DD MMM Descrição R$ <valor>`. A data é montada com o ano da fatura; meses posteriores ao mês de referência são interpretados como ano anterior (transações anteriores à data de fechamento).
-- `ItauInvoiceParser`: mesma stack (PDFBox 3.0.3) para faturas do Itaú, que usam formato numérico:
-  - **Mês de referência:** linha `Mês de referência: MM/AAAA`.
-  - **Total:** linha `Total desta fatura R$ <valor>` ou `Total da fatura: R$ <valor>`.
-  - **Lançamentos:** linhas `DD/MM Descrição <valor>` (valor no padrão BR sem prefixo `R$` por linha). Mesma regra de recuo de ano para meses posteriores ao mês de referência.
+- `ItauInvoiceParser` (reescrito na issue #73, **column-aware**): a fatura real do Itaú usa leiaute de **duas colunas**, que o `PDFTextStripper` mescla numa mesma linha física. O parser:
+  - **Mês de referência:** derivado de `Vencimento: DD/MM/AAAA` (a fatura não traz "mês de referência").
+  - **Total:** linha `Total desta fatura <valor>` (`R$` opcional).
+  - **Lançamentos:** separa as colunas por região (`PDFTextStripperByArea`), detectando o *gutter* (vão vertical entre colunas) dinamicamente a partir das linhas com dois lançamentos. Em cada coluna, casa `DD/MM Descrição <valor>` (padrão BR, `R$` opcional) com a mesma regra de recuo de ano.
+  - **Escopo dos lançamentos:** considera de `Lançamentos: compras e saques` até `Total dos lançamentos atuais`, incluindo nacionais e internacionais; a tabela `Compras parceladas - próximas faturas` (projeções) é **excluída** e valores **negativos** (pagamentos/estornos) são **ignorados** (decisão pontual do parser; tratamento global de negativos na issue #72).
 - A seleção por `origem` (`NUBANK`, `ITAU`, `OUTROS`) deixa o modelo pronto para novos parsers — basta criar mais uma implementação `InvoiceParser` anotada com `@Component`. `OUTROS` ainda não tem parser registrado.
-- Fixtures de teste: `src/test/resources/invoices/nubank/sample-fatura.pdf` e `src/test/resources/invoices/itau/sample-fatura.pdf`, gerados deterministicamente por `NubankInvoiceFixtures` / `ItauInvoiceFixtures` (regeneráveis via `java ... com.goodfunds.invoice.parser.{Nubank,Itau}InvoiceFixtures`).
+- Fixtures de teste: `src/test/resources/invoices/nubank/sample-fatura.pdf` (Nubank, commitada por `NubankInvoiceFixtures`) e, para o Itaú, PDFs sintéticos de duas colunas gerados em tempo de teste por `ItauInvoiceFixtures` (sem binário commitado). Validação contra fatura real é feita localmente (dados sensíveis não são commitados).
 - PDFs salvos em `{app.uploads.dir}/{userId}/` no filesystem local.
 
 ### Geração de transações a partir da fatura (issue #16)

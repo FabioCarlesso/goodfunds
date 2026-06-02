@@ -6,7 +6,6 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,6 +15,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 class ItauInvoiceParserTest {
 
@@ -27,24 +27,46 @@ class ItauInvoiceParserTest {
     }
 
     @Test
-    void parse_extractsMonthTotalAndTransactionsFromFixture(@TempDir Path tempDir) throws IOException {
-        File pdf = copyFixtureTo(tempDir.resolve("fatura.pdf"));
+    void parse_extractsTwoColumnLayout_skippingNegativesAndProjections(@TempDir Path tempDir)
+            throws IOException {
+        File pdf = ItauInvoiceFixtures.writeSamplePdf(tempDir.resolve("fatura.pdf")).toFile();
 
         ParsedInvoice parsed = parser.parse(pdf);
 
-        assertThat(parsed.mesReferencia()).isEqualTo(YearMonth.of(2025, 6));
+        // Mes de referencia vem do Vencimento (11/05/2026); total de "Total desta fatura".
+        assertThat(parsed.mesReferencia()).isEqualTo(YearMonth.of(2026, 5));
         assertThat(parsed.total()).isEqualByComparingTo(new BigDecimal("1234.56"));
+
+        // Coluna esquerda + direita; estorno e pagamento (negativos) e projecoes excluidos.
         assertThat(parsed.transacoes())
                 .extracting(ParsedInvoiceTransaction::data,
                         ParsedInvoiceTransaction::descricao,
                         ParsedInvoiceTransaction::valor)
-                .containsExactly(
+                .containsExactlyInAnyOrder(
                         tuple(LocalDate.of(2025, 6, 1), "MERCADO LIVRE", new BigDecimal("89.90")),
-                        tuple(LocalDate.of(2025, 6, 5), "UBER TRIP", new BigDecimal("35.40")),
-                        tuple(LocalDate.of(2025, 6, 12), "PADARIA CENTRAL", new BigDecimal("24.80")),
-                        tuple(LocalDate.of(2025, 5, 28), "NETFLIX", new BigDecimal("55.90")),
-                        tuple(LocalDate.of(2025, 5, 30), "POSTO SHELL", new BigDecimal("200.00"))
+                        tuple(LocalDate.of(2025, 6, 5), "PADARIA CENTRAL", new BigDecimal("24.80")),
+                        tuple(LocalDate.of(2025, 6, 10), "NOTEBOOK", new BigDecimal("1500.00")),
+                        tuple(LocalDate.of(2025, 6, 7), "CLAUDE AI SUBSCRIPTION", new BigDecimal("116.41")),
+                        tuple(LocalDate.of(2025, 6, 2), "UBER TRIP", new BigDecimal("35.40")),
+                        tuple(LocalDate.of(2025, 6, 11), "SUPERMERCADO", new BigDecimal("45.67"))
                 );
+    }
+
+    @Test
+    void parse_doesNotIncludeNegativeOrProjectedAmounts(@TempDir Path tempDir) throws IOException {
+        File pdf = ItauInvoiceFixtures.writeSamplePdf(tempDir.resolve("fatura.pdf")).toFile();
+
+        ParsedInvoice parsed = parser.parse(pdf);
+
+        assertThat(parsed.transacoes()).hasSize(6);
+        BigDecimal soma = parsed.transacoes().stream()
+                .map(ParsedInvoiceTransaction::valor)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // 89,90 + 24,80 + 1.500,00 + 116,41 + 35,40 + 45,67
+        assertThat(soma).isEqualByComparingTo(new BigDecimal("1812.18"));
+        assertThat(parsed.transacoes())
+                .noneMatch(t -> t.valor().signum() <= 0)
+                .noneMatch(t -> t.descricao().contains("LOJA FUTURA"));
     }
 
     @Test
@@ -84,139 +106,77 @@ class ItauInvoiceParserTest {
     }
 
     @Test
-    void parseText_failsWhenMonthMissing() {
-        String text = String.join("\n",
-                "Total desta fatura R$ 1.234,56",
-                "01/06 MERCADO LIVRE 89,90");
+    void parse_failsWhenVencimentoMissing(@TempDir Path tempDir) throws IOException {
+        File pdf = ItauInvoiceFixtures.writeLines(tempDir.resolve("f.pdf"), List.of(
+                "Total desta fatura R$ 10,00",
+                "Lancamentos: compras e saques",
+                "01/06 MERCADO LIVRE 89,90"
+        )).toFile();
 
-        assertThatThrownBy(() -> parser.parseText(text))
+        assertThatThrownBy(() -> parser.parse(pdf))
                 .isInstanceOf(InvoiceParseException.class)
-                .hasMessageContaining("Mes de referencia");
+                .hasMessageContaining("Vencimento");
     }
 
     @Test
-    void parseText_failsWhenTotalMissing() {
-        String text = String.join("\n",
-                "Mes de referencia: 06/2025",
-                "01/06 MERCADO LIVRE 89,90");
+    void parse_failsWhenTotalMissing(@TempDir Path tempDir) throws IOException {
+        File pdf = ItauInvoiceFixtures.writeLines(tempDir.resolve("f.pdf"), List.of(
+                "Vencimento: 11/05/2026",
+                "Lancamentos: compras e saques",
+                "01/06 MERCADO LIVRE 89,90"
+        )).toFile();
 
-        assertThatThrownBy(() -> parser.parseText(text))
+        assertThatThrownBy(() -> parser.parse(pdf))
                 .isInstanceOf(InvoiceParseException.class)
                 .hasMessageContaining("Total da fatura");
     }
 
     @Test
-    void parseText_failsWhenNoTransactions() {
-        String text = String.join("\n",
-                "Mes de referencia: 06/2025",
-                "Total desta fatura R$ 1.234,56",
-                "(sem lancamentos no formato esperado)");
+    void parse_failsWhenNoTransactions(@TempDir Path tempDir) throws IOException {
+        File pdf = ItauInvoiceFixtures.writeLines(tempDir.resolve("f.pdf"), List.of(
+                "Vencimento: 11/05/2026",
+                "Total desta fatura R$ 10,00",
+                "Lancamentos: compras e saques",
+                "(sem lancamentos no formato esperado)"
+        )).toFile();
 
-        assertThatThrownBy(() -> parser.parseText(text))
+        assertThatThrownBy(() -> parser.parse(pdf))
                 .isInstanceOf(InvoiceParseException.class)
                 .hasMessageContaining("Nenhum lancamento");
     }
 
     @Test
-    void parseText_failsWhenDayIsInvalid() {
-        String text = String.join("\n",
-                "Mes de referencia: 02/2025",
-                "Total desta fatura R$ 100,00",
-                "31/02 TRANSACAO INVALIDA 10,00");
-
-        assertThatThrownBy(() -> parser.parseText(text))
-                .isInstanceOf(InvoiceParseException.class)
-                .hasMessageContaining("Data invalida");
-    }
-
-    @Test
-    void parseText_handlesDescriptionContainingInstallments() {
-        String text = String.join("\n",
-                "Mes de referencia: 06/2025",
-                "Total desta fatura R$ 150,00",
-                "10/06 LOJA X PARCELA 02/12 150,00");
-
-        ParsedInvoice parsed = parser.parseText(text);
-
-        assertThat(parsed.transacoes()).singleElement()
-                .satisfies(t -> {
-                    assertThat(t.data()).isEqualTo(LocalDate.of(2025, 6, 10));
-                    assertThat(t.descricao()).isEqualTo("LOJA X PARCELA 02/12");
-                    assertThat(t.valor()).isEqualByComparingTo(new BigDecimal("150.00"));
-                });
-    }
-
-    @Test
-    void parseText_handlesNegativeTotalAndValue() {
-        String text = String.join("\n",
-                "Mes de referencia: 06/2025",
-                "Total desta fatura R$ -50,00",
-                "05/06 ESTORNO -50,00");
-
-        ParsedInvoice parsed = parser.parseText(text);
-
-        assertThat(parsed.total()).isEqualByComparingTo(new BigDecimal("-50.00"));
-        assertThat(parsed.transacoes()).singleElement()
-                .extracting(ParsedInvoiceTransaction::valor)
-                .isEqualTo(new BigDecimal("-50.00"));
-    }
-
-    @Test
-    void parseText_removesThousandSeparatorOnTransactionValue() {
-        String text = String.join("\n",
-                "Mes de referencia: 06/2025",
-                "Total desta fatura R$ 1.500,00",
-                "10/06 NOTEBOOK 1.500,00");
-
-        ParsedInvoice parsed = parser.parseText(text);
-
-        assertThat(parsed.transacoes()).singleElement()
-                .extracting(ParsedInvoiceTransaction::valor)
-                .isEqualTo(new BigDecimal("1500.00"));
-    }
-
-    @Test
-    void parseText_recuaTransacoesPosterioresParaAnoAnterior() {
-        String text = String.join("\n",
-                "Mes de referencia: 01/2025",
+    void parse_recuaLancamentosPosterioresParaAnoAnterior(@TempDir Path tempDir) throws IOException {
+        File pdf = ItauInvoiceFixtures.writeLines(tempDir.resolve("f.pdf"), List.of(
+                "Vencimento: 11/01/2026",
                 "Total desta fatura R$ 300,00",
+                "Lancamentos: compras e saques",
                 "20/12 COMPRA DEZEMBRO 200,00",
-                "05/01 COMPRA JANEIRO 100,00");
+                "05/01 COMPRA JANEIRO 100,00"
+        )).toFile();
 
-        ParsedInvoice parsed = parser.parseText(text);
+        ParsedInvoice parsed = parser.parse(pdf);
 
         assertThat(parsed.transacoes())
                 .extracting(ParsedInvoiceTransaction::data)
-                .containsExactly(LocalDate.of(2024, 12, 20), LocalDate.of(2025, 1, 5));
+                .containsExactlyInAnyOrder(LocalDate.of(2025, 12, 20), LocalDate.of(2026, 1, 5));
     }
 
     @Test
-    void parseText_endToEndAgainstPdfGeneratedFromLines(@TempDir Path tempDir) throws IOException {
-        Path pdf = tempDir.resolve("custom.pdf");
-        ItauInvoiceFixtures.writePdf(pdf, List.of(
-                "Mes de referencia: 03/2025",
-                "Total desta fatura R$ 10,00",
-                "01/03 ITEM UNICO 10,00"
-        ));
+    void parse_handlesInstallmentMarkerInDescription(@TempDir Path tempDir) throws IOException {
+        File pdf = ItauInvoiceFixtures.writeLines(tempDir.resolve("f.pdf"), List.of(
+                "Vencimento: 11/06/2026",
+                "Total desta fatura R$ 150,00",
+                "Lancamentos: compras e saques",
+                "10/06 LOJA X PARCELA 02/12 150,00"
+        )).toFile();
 
-        ParsedInvoice parsed = parser.parse(pdf.toFile());
+        ParsedInvoice parsed = parser.parse(pdf);
 
-        assertThat(parsed.mesReferencia()).isEqualTo(YearMonth.of(2025, 3));
-        assertThat(parsed.transacoes()).hasSize(1);
-    }
-
-    private File copyFixtureTo(Path target) throws IOException {
-        try (InputStream in = getClass().getClassLoader()
-                .getResourceAsStream(ItauInvoiceFixtures.RESOURCE_PATH)) {
-            assertThat(in)
-                    .as("fixture %s no classpath", ItauInvoiceFixtures.RESOURCE_PATH)
-                    .isNotNull();
-            Files.copy(in, target);
-        }
-        return target.toFile();
-    }
-
-    private static org.assertj.core.groups.Tuple tuple(Object... values) {
-        return org.assertj.core.api.Assertions.tuple(values);
+        assertThat(parsed.transacoes()).singleElement()
+                .satisfies(t -> {
+                    assertThat(t.descricao()).isEqualTo("LOJA X PARCELA 02/12");
+                    assertThat(t.valor()).isEqualByComparingTo(new BigDecimal("150.00"));
+                });
     }
 }
