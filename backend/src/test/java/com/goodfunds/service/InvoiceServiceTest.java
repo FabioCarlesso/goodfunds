@@ -6,6 +6,9 @@ import com.goodfunds.domain.OrigemFatura;
 import com.goodfunds.domain.StatusFatura;
 import com.goodfunds.domain.User;
 import com.goodfunds.exception.InvoiceNotFoundException;
+import com.goodfunds.exception.UnsupportedInvoiceOrigemException;
+import com.goodfunds.invoice.parser.InvoiceParserFactory;
+import com.goodfunds.invoice.parser.NubankInvoiceParser;
 import com.goodfunds.repository.InvoiceRepository;
 import com.goodfunds.repository.TransactionRepository;
 import com.goodfunds.repository.UserRepository;
@@ -54,7 +57,8 @@ class InvoiceServiceTest {
         InvoiceUploadProperties properties = new InvoiceUploadProperties();
         properties.setDir(uploadsDir.toString());
         InvoiceService service = new InvoiceService(
-                invoiceRepository, userRepository, transactionRepository, properties, reportCacheService);
+                invoiceRepository, userRepository, transactionRepository, properties,
+                reportCacheService, parserFactory());
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "fatura.pdf",
@@ -73,6 +77,25 @@ class InvoiceServiceTest {
 
         assertThat(regularFiles()).isEmpty();
         verify(invoiceRepository).save(any(Invoice.class));
+    }
+
+    @Test
+    void upload_whenOrigemHasNoParser_rejectsWithoutSavingFileOrRecord() throws IOException {
+        UUID userId = UUID.randomUUID();
+        InvoiceService service = newService();
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "fatura.pdf",
+                MediaType.APPLICATION_PDF_VALUE,
+                "%PDF-1.4 conteudo".getBytes());
+
+        assertThatThrownBy(() -> service.upload(userId, file, OrigemFatura.OUTROS))
+                .isInstanceOf(UnsupportedInvoiceOrigemException.class)
+                .hasMessageContaining("OUTROS")
+                .hasMessageContaining("NUBANK");
+
+        assertThat(regularFiles()).isEmpty();
+        verifyNoInteractions(invoiceRepository, userRepository, transactionRepository, reportCacheService);
     }
 
     @Test
@@ -122,7 +145,13 @@ class InvoiceServiceTest {
         InvoiceUploadProperties properties = new InvoiceUploadProperties();
         properties.setDir(uploadsDir.toString());
         return new InvoiceService(
-                invoiceRepository, userRepository, transactionRepository, properties, reportCacheService);
+                invoiceRepository, userRepository, transactionRepository, properties,
+                reportCacheService, parserFactory());
+    }
+
+    private InvoiceParserFactory parserFactory() {
+        // Apenas NUBANK possui parser neste cenario de teste; OUTROS/ITAU ficam sem suporte.
+        return new InvoiceParserFactory(List.of(new NubankInvoiceParser()));
     }
 
     private List<Path> regularFiles() throws IOException {

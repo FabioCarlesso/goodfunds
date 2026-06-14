@@ -256,6 +256,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 instanceUri(request));
     }
 
+    @ExceptionHandler(UnsupportedInvoiceOrigemException.class)
+    public ProblemDetail handleUnsupportedInvoiceOrigem(UnsupportedInvoiceOrigemException ex,
+                                                        HttpServletRequest request) {
+        return createProblem(
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                "Origem de fatura nao suportada",
+                ex.getMessage(),
+                "unsupported-invoice-origem",
+                instanceUri(request));
+    }
+
     @Override
     protected ResponseEntity<Object> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex,
                                                                           HttpHeaders headers,

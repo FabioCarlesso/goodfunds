@@ -36,6 +36,19 @@ class InvoiceParserFactoryTest {
     }
 
     @Test
+    void exposesSupportedOrigens() {
+        InvoiceParserFactory factory = new InvoiceParserFactory(
+                List.of(new NubankInvoiceParser(), new ItauInvoiceParser()));
+
+        assertThat(factory.origensSuportadas())
+                .containsExactlyInAnyOrder(OrigemFatura.NUBANK, OrigemFatura.ITAU);
+        assertThat(factory.suporta(OrigemFatura.NUBANK)).isTrue();
+        assertThat(factory.suporta(OrigemFatura.ITAU)).isTrue();
+        assertThat(factory.suporta(OrigemFatura.OUTROS)).isFalse();
+        assertThat(factory.suporta(null)).isFalse();
+    }
+
+    @Test
     void forOrigem_failsWhenNoParserRegistered() {
         InvoiceParserFactory factory = new InvoiceParserFactory(List.of(new NubankInvoiceParser()));
 
