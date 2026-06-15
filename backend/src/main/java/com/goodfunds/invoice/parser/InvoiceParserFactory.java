@@ -8,6 +8,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @Component
 public class InvoiceParserFactory {
@@ -29,6 +30,22 @@ public class InvoiceParserFactory {
         this.parsersPorOrigem = Map.copyOf(map);
     }
 
+    /**
+     * Origens que possuem um {@link InvoiceParser} registrado e, portanto, podem
+     * ser processadas. Usado para rejeitar o upload de origens sem parser antes
+     * de salvar arquivo/registro.
+     */
+    public Set<OrigemFatura> origensSuportadas() {
+        return parsersPorOrigem.keySet();
+    }
+
+    /**
+     * Indica se a origem informada possui um parser registrado.
+     */
+    public boolean suporta(OrigemFatura origem) {
+        return origem != null && parsersPorOrigem.containsKey(origem);
+    }
+
     public InvoiceParser forInvoice(Invoice invoice) {
         Objects.requireNonNull(invoice, "invoice");
         return forOrigem(invoice.getOrigem());
@@ -36,10 +53,9 @@ public class InvoiceParserFactory {
 
     public InvoiceParser forOrigem(OrigemFatura origem) {
         Objects.requireNonNull(origem, "origem");
-        InvoiceParser parser = parsersPorOrigem.get(origem);
-        if (parser == null) {
+        if (!suporta(origem)) {
             throw new InvoiceParseException("Nenhum parser disponivel para origem " + origem);
         }
-        return parser;
+        return parsersPorOrigem.get(origem);
     }
 }

@@ -10,6 +10,8 @@ import com.goodfunds.dto.InvoiceResponse;
 import com.goodfunds.dto.TransactionResponse;
 import com.goodfunds.exception.InvalidInvoiceFileException;
 import com.goodfunds.exception.InvoiceNotFoundException;
+import com.goodfunds.exception.UnsupportedInvoiceOrigemException;
+import com.goodfunds.invoice.parser.InvoiceParserFactory;
 import com.goodfunds.repository.InvoiceRepository;
 import com.goodfunds.repository.TransactionRepository;
 import com.goodfunds.repository.UserRepository;
@@ -28,6 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class InvoiceService {
@@ -42,17 +45,20 @@ public class InvoiceService {
     private final TransactionRepository transactionRepository;
     private final InvoiceUploadProperties uploadProperties;
     private final ReportCacheService reportCacheService;
+    private final InvoiceParserFactory parserFactory;
 
     public InvoiceService(InvoiceRepository invoiceRepository,
                           UserRepository userRepository,
                           TransactionRepository transactionRepository,
                           InvoiceUploadProperties uploadProperties,
-                          ReportCacheService reportCacheService) {
+                          ReportCacheService reportCacheService,
+                          InvoiceParserFactory parserFactory) {
         this.invoiceRepository = invoiceRepository;
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
         this.uploadProperties = uploadProperties;
         this.reportCacheService = reportCacheService;
+        this.parserFactory = parserFactory;
     }
 
     @Transactional(readOnly = true)
@@ -77,6 +83,7 @@ public class InvoiceService {
     public InvoiceResponse upload(UUID userId, MultipartFile file, OrigemFatura origem) {
         validateFile(file);
         OrigemFatura origemFinal = origem != null ? origem : OrigemFatura.NUBANK;
+        validateOrigemSuportada(origemFinal);
 
         Path baseDir = Path.of(uploadProperties.getDir()).toAbsolutePath().normalize();
         Path userDir = baseDir.resolve(userId.toString());
@@ -153,6 +160,19 @@ public class InvoiceService {
         if (!hasPdfSignature(file)) {
             throw new InvalidInvoiceFileException("Arquivo nao e um PDF valido");
         }
+    }
+
+    private void validateOrigemSuportada(OrigemFatura origem) {
+        if (parserFactory.suporta(origem)) {
+            return;
+        }
+        String suportadas = parserFactory.origensSuportadas().stream()
+                .map(Enum::name)
+                .sorted()
+                .collect(Collectors.joining(", "));
+        throw new UnsupportedInvoiceOrigemException(
+                "Origem de fatura nao suportada: " + origem
+                        + ". Origens suportadas: " + suportadas);
     }
 
     private boolean hasPdfSignature(MultipartFile file) {

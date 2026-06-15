@@ -179,6 +179,28 @@ class InvoiceControllerIntegrationTest {
     }
 
     @Test
+    void upload_withUnsupportedOrigem_returns422AndPersistsNothing() throws Exception {
+        MockMultipartFile file = pdfFile("fatura.pdf", "%PDF-1.4 conteudo".getBytes());
+
+        mockMvc.perform(multipart("/invoices/upload")
+                        .file(file)
+                        .param("origem", "OUTROS")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:goodfunds:problem:unsupported-invoice-origem"))
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("OUTROS")));
+
+        assertThat(invoiceRepository.findByUserIdOrderByCreatedAtDesc(owner.getId())).isEmpty();
+        Path userDir = uploadsDir.resolve(owner.getId().toString());
+        if (Files.exists(userDir)) {
+            try (var paths = Files.walk(userDir)) {
+                assertThat(paths.filter(Files::isRegularFile).toList()).isEmpty();
+            }
+        }
+    }
+
+    @Test
     void upload_withInvalidOrigem_returns400() throws Exception {
         MockMultipartFile file = pdfFile("fatura.pdf", "%PDF-1.4 conteudo".getBytes());
 

@@ -179,9 +179,9 @@ Body de `POST/PUT`: `{ "nome": "Lazer", "tipo": "DESPESA" }`. `nome` obrigatóri
 `POST /invoices/upload` recebe `multipart/form-data` com:
 
 - `file` (obrigatório): arquivo PDF (`application/pdf`, com assinatura `%PDF`).
-- `origem` (opcional, default `NUBANK`): valores do enum `OrigemFatura` (`NUBANK`, `ITAU`, `OUTROS`).
+- `origem` (opcional, default `NUBANK`): valores do enum `OrigemFatura` (`NUBANK`, `ITAU`, `OUTROS`). A origem precisa ter um parser registrado (`NUBANK`, `ITAU`); `OUTROS` ainda não tem parser e é rejeitada no upload.
 
-O arquivo é salvo em `{app.uploads.dir}/{userId}/{uuid}.pdf` e a `Invoice` é persistida com `status = PENDENTE_PARSE`. Os campos `mesReferencia` e `totalValor` ficam nulos até o parser processar a fatura. Se a persistência falhar ou a transação fizer rollback depois da gravação do PDF, o arquivo recém-salvo é removido. Limites controlados por `spring.servlet.multipart.max-file-size` (default 10MB) — excedeu retorna 413 `max-upload-size-exceeded`. Validações de arquivo retornam 400 `invalid-invoice-file`.
+O arquivo é salvo em `{app.uploads.dir}/{userId}/{uuid}.pdf` e a `Invoice` é persistida com `status = PENDENTE_PARSE`. Os campos `mesReferencia` e `totalValor` ficam nulos até o parser processar a fatura. Se a persistência falhar ou a transação fizer rollback depois da gravação do PDF, o arquivo recém-salvo é removido. Limites controlados por `spring.servlet.multipart.max-file-size` (default 10MB) — excedeu retorna 413 `max-upload-size-exceeded`. Validações de arquivo retornam 400 `invalid-invoice-file`. Origem sem parser registrado (issue #70) é rejeitada **antes** de salvar arquivo/registro, com 422 `unsupported-invoice-origem` (a `InvoiceParserFactory` expõe `suporta`/`origensSuportadas` como fonte das origens válidas) — evita persistir uma fatura que fatalmente falharia no `process`.
 
 `GET /invoices/{id}` retorna `InvoiceDetailResponse` (mesmos campos de `InvoiceResponse` mais `transactions: TransactionResponse[]`). Ambos os GETs são isolados pelo `userId` do JWT.
 
@@ -301,7 +301,7 @@ Cache **Caffeine** aplicado aos relatórios (`/reports/*`), implementado na issu
   - Interface `InvoiceParser` com `OrigemFatura origem()` e `ParsedInvoice parse(File pdf)`.
   - DTOs imutáveis `ParsedInvoice` (`mesReferencia`, `total`, `transacoes`) e `ParsedInvoiceTransaction` (`data`, `descricao`, `valor`).
   - `InvoiceParseException` para erros de leitura/extração.
-  - `InvoiceParserFactory` (Spring `@Component`) recebe todos os `InvoiceParser` via injeção e expõe `forInvoice(Invoice)` / `forOrigem(OrigemFatura)`. Garante que cada origem tenha no máximo uma implementação registrada.
+  - `InvoiceParserFactory` (Spring `@Component`) recebe todos os `InvoiceParser` via injeção e expõe `forInvoice(Invoice)` / `forOrigem(OrigemFatura)`, além de `suporta(OrigemFatura)` / `origensSuportadas()` usados pelo `InvoiceService.upload` para rejeitar origens sem parser logo no upload (422 `unsupported-invoice-origem`). Garante que cada origem tenha no máximo uma implementação registrada.
 - `NubankInvoiceParser` (MVP): usa Apache PDFBox 3.0.3 (`Loader.loadPDF` + `PDFTextStripper`) e extrai do texto:
   - **Mês de referência:** linha `Mês de referência: <MES> de <ANO>` (mês em PT-BR, três letras: `JAN`...`DEZ`).
   - **Total:** linha `Valor total: R$ <valor>` ou `Total da fatura: R$ <valor>`.
