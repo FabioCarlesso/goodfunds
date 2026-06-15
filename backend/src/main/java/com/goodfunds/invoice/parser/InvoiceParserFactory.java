@@ -53,10 +53,9 @@ public class InvoiceParserFactory {
 
     public InvoiceParser forOrigem(OrigemFatura origem) {
         Objects.requireNonNull(origem, "origem");
-        InvoiceParser parser = parsersPorOrigem.get(origem);
-        if (parser == null) {
+        if (!suporta(origem)) {
             throw new InvoiceParseException("Nenhum parser disponivel para origem " + origem);
         }
-        return parser;
+        return parsersPorOrigem.get(origem);
     }
 }
