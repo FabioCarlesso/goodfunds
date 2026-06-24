@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -87,10 +88,11 @@ public class InvoiceProcessingService {
 
         try {
             ParsedInvoice parsed = parse(invoice);
-            // Valida os lancamentos antes de tocar o banco para que entradas invalidas
-            // (ex.: linhas de credito/estorno com valor negativo) marquem ERRO de forma
-            // controlada, em vez de estourar uma constraint no commit.
-            validateLineItems(parsed);
+            // Seleciona os lancamentos que viram transactions antes de tocar o banco:
+            // linhas de pagamento/estorno (valor nao positivo) sao ignoradas e as demais
+            // sao validadas, para que faturas reais cheguem a PROCESSADA sem estourar
+            // constraint no commit.
+            List<ParsedInvoiceTransaction> lineItems = selectPersistableLineItems(parsed);
 
             Map<String, Category> categoryByNome = buildCategoryMap(userId);
             Category defaultCategory = resolveDefaultCategory(userId, categoryByNome);
@@ -98,7 +100,7 @@ public class InvoiceProcessingService {
             // Idempotencia: limpa lancamentos de uma tentativa anterior antes de recriar.
             transactionRepository.deleteByInvoiceId(invoiceId);
 
-            List<Transaction> transactions = parsed.transacoes().stream()
+            List<Transaction> transactions = lineItems.stream()
                     .map(item -> toTransaction(item, invoice, defaultCategory, categoryByNome))
                     .toList();
             transactionRepository.saveAll(transactions);
@@ -131,12 +133,31 @@ public class InvoiceProcessingService {
         return parserFactory.forInvoice(invoice).parse(pdf);
     }
 
-    private void validateLineItems(ParsedInvoice parsed) {
+    /**
+     * Seleciona os lancamentos que devem virar {@link Transaction}, aplicando a regra de
+     * produto para valores negativos (issue #72).
+     *
+     * <p>Linhas com valor <strong>nao positivo</strong> — pagamentos da fatura anterior e
+     * estornos/creditos, presentes em praticamente toda fatura real (Nubank e Itau) — sao
+     * <strong>ignoradas</strong>: nao geram transaction. Isso permite que a fatura chegue a
+     * {@code PROCESSADA} em vez de cair em {@code ERRO}, mantem os relatorios como somatorio
+     * dos gastos do periodo (estornos nao reduzem artificialmente o total) e respeita o
+     * invariante da coluna {@code valor} ({@code @Positive} / {@code CHECK (valor > 0)}), que
+     * nao aceita persistir valores negativos. A regra e aplicada no servico, valendo de forma
+     * identica para todas as origens.
+     *
+     * <p>Os lancamentos mantidos (positivos) ainda sao validados quanto a descricao (nao vazia
+     * e ate {@value #MAX_DESCRICAO_LENGTH} caracteres); uma descricao invalida marca a fatura
+     * como {@code ERRO} de forma controlada.
+     */
+    private List<ParsedInvoiceTransaction> selectPersistableLineItems(ParsedInvoice parsed) {
+        List<ParsedInvoiceTransaction> persistable = new ArrayList<>();
         for (ParsedInvoiceTransaction item : parsed.transacoes()) {
             if (item.valor().signum() <= 0) {
-                throw new InvoiceParseException(
-                        "Lancamento com valor nao positivo (" + item.valor()
-                                + ") nao e suportado: " + item.descricao());
+                // Pagamento/estorno: ignorado, nao gera transaction.
+                log.debug("Lancamento ignorado por valor nao positivo ({}): {}",
+                        item.valor(), item.descricao());
+                continue;
             }
             String descricao = item.descricao() == null ? "" : item.descricao().strip();
             if (descricao.isEmpty()) {
@@ -146,7 +167,9 @@ public class InvoiceProcessingService {
                 throw new InvoiceParseException(
                         "Descricao do lancamento excede " + MAX_DESCRICAO_LENGTH + " caracteres");
             }
+            persistable.add(item);
         }
+        return persistable;
     }
 
     private Map<String, Category> buildCategoryMap(UUID userId) {

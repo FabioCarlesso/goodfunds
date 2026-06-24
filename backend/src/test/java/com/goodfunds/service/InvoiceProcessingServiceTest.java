@@ -22,6 +22,8 @@ import com.goodfunds.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -284,22 +286,72 @@ class InvoiceProcessingServiceTest {
     }
 
     @Test
-    void process_whenLineItemValueNotPositive_marksErroWithoutPersisting() {
+    void process_whenLineItemValueNotPositive_ignoresItAndPersistsRemaining() {
+        // Fatura real: linha de pagamento/estorno (negativa) + uma compra positiva.
         ParsedInvoice parsed = new ParsedInvoice(
                 YearMonth.of(2025, 6),
-                new BigDecimal("89.90"),
-                List.of(new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 1), "ESTORNO", new BigDecimal("-50.00"))));
-        when(invoiceRepository.findById(invoice.getId())).thenReturn(Optional.of(invoice));
-        when(parserFactory.forInvoice(invoice)).thenReturn(parser);
-        lenient().when(parser.parse(any(File.class))).thenReturn(parsed);
+                new BigDecimal("39.90"),
+                List.of(
+                        new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 1), "PAGAMENTO FATURA ANTERIOR", new BigDecimal("-500.00")),
+                        new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 2), "ESTORNO LOJA", new BigDecimal("-10.00")),
+                        new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 5), "MERCADO", new BigDecimal("89.90"))));
+        stubParsing(parsed);
         when(invoiceRepository.save(any(Invoice.class))).thenAnswer(call -> call.getArgument(0));
 
         InvoiceResponse response = service.process(owner.getId(), invoice.getId());
 
-        assertThat(response.status()).isEqualTo(StatusFatura.ERRO);
-        assertThat(invoice.getStatus()).isEqualTo(StatusFatura.ERRO);
-        verify(transactionRepository, never()).deleteByInvoiceId(any());
-        verify(transactionRepository, never()).saveAll(any());
+        // Linhas negativas ignoradas; fatura processada com a unica compra positiva.
+        assertThat(response.status()).isEqualTo(StatusFatura.PROCESSADA);
+        assertThat(invoice.getStatus()).isEqualTo(StatusFatura.PROCESSADA);
+        verify(transactionRepository).deleteByInvoiceId(invoice.getId());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Transaction>> captor = ArgumentCaptor.forClass(List.class);
+        verify(transactionRepository).saveAll(captor.capture());
+        List<Transaction> saved = captor.getValue();
+        assertThat(saved).hasSize(1);
+        assertThat(saved.get(0).getDescricao()).isEqualTo("MERCADO");
+        assertThat(saved.get(0).getValor()).isEqualByComparingTo("89.90");
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = OrigemFatura.class, names = {"NUBANK", "ITAU"})
+    void process_ignoresNegativeLinesIdenticallyForEachOrigem(OrigemFatura origem) {
+        invoice.setOrigem(origem);
+        ParsedInvoice parsed = new ParsedInvoice(
+                YearMonth.of(2025, 6),
+                new BigDecimal("89.90"),
+                List.of(
+                        new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 1), "ESTORNO", new BigDecimal("-50.00")),
+                        new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 5), "MERCADO", new BigDecimal("89.90"))));
+        stubParsing(parsed);
+        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(call -> call.getArgument(0));
+
+        InvoiceResponse response = service.process(owner.getId(), invoice.getId());
+
+        assertThat(response.status()).isEqualTo(StatusFatura.PROCESSADA);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Transaction>> captor = ArgumentCaptor.forClass(List.class);
+        verify(transactionRepository).saveAll(captor.capture());
+        assertThat(captor.getValue()).extracting(Transaction::getDescricao).containsExactly("MERCADO");
+    }
+
+    @Test
+    void process_whenAllLinesNonPositive_marksProcessadaWithNoTransactions() {
+        ParsedInvoice parsed = new ParsedInvoice(
+                YearMonth.of(2025, 6),
+                new BigDecimal("-50.00"),
+                List.of(new ParsedInvoiceTransaction(LocalDate.of(2025, 6, 1), "ESTORNO", new BigDecimal("-50.00"))));
+        stubParsing(parsed);
+        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(call -> call.getArgument(0));
+
+        InvoiceResponse response = service.process(owner.getId(), invoice.getId());
+
+        assertThat(response.status()).isEqualTo(StatusFatura.PROCESSADA);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Transaction>> captor = ArgumentCaptor.forClass(List.class);
+        verify(transactionRepository).saveAll(captor.capture());
+        assertThat(captor.getValue()).isEmpty();
     }
 
     private void stubParsing(ParsedInvoice parsed) {
